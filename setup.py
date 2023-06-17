@@ -20,7 +20,9 @@ if __name__ == '__main__':
         url='https://github.com/ssbuild/aigc_zoo',
         author='ssbuild',
         author_email='9727464@qq.com',
-        install_requires=['deep_training>=0.1.11'],
+        install_requires=[
+            'deep_training>=0.1.11,<=0.1.12'
+                          ],
         packages= list(package_dir.keys()),
         package_dir= package_dir,
     )
