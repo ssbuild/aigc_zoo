@@ -20,6 +20,7 @@ torch >= 2
 - [pytorch-task-example](https://github.com/ssbuild/pytorch-task-example)
 - [chatmoss_finetuning](https://github.com/ssbuild/chatmoss_finetuning)
 - [chatglm_finetuning](https://github.com/ssbuild/chatglm_finetuning)
+- [chatglm2_finetuning](https://github.com/ssbuild/chatglm2_finetuning)
 - [t5_finetuning](https://github.com/ssbuild/t5_finetuning)
 - [llm_finetuning](https://github.com/ssbuild/llm_finetuning)
 - [llm_rlhf](https://github.com/ssbuild/llm_rlhf)
