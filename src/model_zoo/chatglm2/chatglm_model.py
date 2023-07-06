@@ -81,7 +81,16 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         logits_processor.append(InvalidScoreLogitsProcessor())
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
-        inputs = self.build_inputs(tokenizer, query, history=history)
+        # inputs = self.build_inputs(tokenizer, query, history=history)
+        if not history:
+            prompt = query
+        else:
+            prompt = ""
+            for i, (old_query, response) in enumerate(history):
+                prompt += "[Round {}]\n问：{}\n答：{}\n".format(i, old_query, response)
+            prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
+
+        inputs = tokenizer([prompt], return_tensors="pt")
         outputs = self.generate(**inputs, **gen_kwargs)
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
         response = tokenizer.decode(outputs)
