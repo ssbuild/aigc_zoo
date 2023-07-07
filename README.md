@@ -16,6 +16,9 @@ python >= 3.10
 torch >= 2
 ```
 
+## AIGC 数据共享
+[数据共享](http://101.42.176.124:8080)
+
 ## 友情链接
 
 - [pytorch-task-example](https://github.com/ssbuild/pytorch-task-example)
