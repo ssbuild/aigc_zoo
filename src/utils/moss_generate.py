@@ -241,5 +241,5 @@ class Generate:
     def infer_(self, input_ids, attention_mask, past_key_values):
         inputs = {"input_ids": input_ids, "attention_mask": attention_mask, "past_key_values": past_key_values}
         with torch.no_grad():
-            outputs = self.forward(**inputs,return_dict=True)
+            outputs = self.model.forward(**inputs,return_dict=True)
         return outputs.logits, outputs.past_key_values
