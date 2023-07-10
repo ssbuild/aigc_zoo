@@ -9,7 +9,9 @@
 ## install
   - pip install -U -r requirements.txt
   - 如果无法安装， 可以切换官方源 pip install -i https://pypi.org/simple -U -r requirements.txt
-  - 源码安装 pip install -U git+https://github.com/ssbuild/aigc_zoo.git
+  - 源码安装 
+pip uninstall aigc_zoo
+pip install -U git+https://github.com/ssbuild/aigc_zoo.git
 
 ```text
 推荐环境 
