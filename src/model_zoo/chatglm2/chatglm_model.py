@@ -185,7 +185,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMinMax, with_pl=T
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
             embedding_size = model.get_input_embeddings().weight.shape[0]
-            if new_num_tokens != embedding_size:
+            if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
                 if (self.lora_args is not None and self.lora_args.with_lora) or (
                         self.prompt_args is not None and self.prompt_args.with_prompt):
