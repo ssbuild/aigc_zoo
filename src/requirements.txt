@@ -2,3 +2,4 @@ deep_training>=0.1.11,<0.1.12
 transformers>=4.30
 bitsandbytes>=0.39
 accelerate>=0.20
+numpy_io>=0.0.7
