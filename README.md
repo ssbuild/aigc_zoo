@@ -19,6 +19,7 @@ torch >= 2
 
 ## AIGC 数据共享
 [数据共享](http://101.42.176.124:8080)
+[大模型评估](https://github.com/ssbuild/aigc_eval)
 
 ## 友情链接
 
