@@ -67,6 +67,10 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
 
+        output_scores = gen_kwargs.get('output_scores', False)
+        if output_scores:
+            gen_kwargs['return_dict_in_generate'] = True
+
         tokenizer: ChatGLMTokenizer
         inputs_ids = tokenizer.encode(query)
         inputs_ids = torch.tensor(inputs_ids[:-2] + inputs_ids[:-2],dtype=torch.int32).unsqueeze(0)
@@ -75,6 +79,9 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         attention_mask = attention_mask.to(self.device)
         position_ids = position_ids.to(self.device)
         outputs = self.generate(inputs_ids=inputs_ids,attention_mask=attention_mask,position_ids=position_ids, **gen_kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
         outputs = outputs.tolist()[0][len(inputs_ids[0]):]
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
@@ -89,6 +96,10 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         logits_processor.append(InvalidScoreLogitsProcessor())
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        output_scores = gen_kwargs.get('output_scores', False)
+        if output_scores:
+            gen_kwargs['return_dict_in_generate'] = True
+
         if not history:
             prompt = query
         else:
@@ -99,6 +110,9 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         inputs = tokenizer([prompt], return_tensors="pt")
         inputs = inputs.to(self.device)
         outputs = self.generate(**inputs, **gen_kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
@@ -310,7 +324,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMinMax, with_pl=T
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: MyChatGLMForConditionalGeneration = self.backbone.model
             embedding_size = model.get_input_embeddings().weight.shape[0]
-            if new_num_tokens != embedding_size:
+            if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
                 if (self.lora_args is not None and self.lora_args.with_lora) or (
                         self.prompt_args is not None and self.prompt_args.with_prompt):

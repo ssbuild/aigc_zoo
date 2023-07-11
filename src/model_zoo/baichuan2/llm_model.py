@@ -1,61 +1,67 @@
-# -*- coding: utf-8 -*-
-# @Author  : ssbuild
-# @Time    : 2023/5/29 9:52
-import torch
-from deep_training.nlp.rl.ilql.configuration import ILQLArguments, ILQLConfig
-from deep_training.nlp.rl.ilql.ilql_module import ILQLModelLoss
-from deep_training.nlp.models.rl.modeling_ilql import AutoModelForCausalLMWithILQLHeads
-from transformers import AdamW
+# coding=utf8
+# @Time    : 2023/5/12 20:41
+# @Author  : tk
+# @FileName: llm_model
+from deep_training.nlp.models.baichuan2.modeling_baichuan import BaichuanForCausalLM,TransformerBaichuanLMHeadModel,BaichuanConfig
 from deep_training.trainer.pl.modelweighter import *
+from .tokenization_baichuan import BaichuanTokenizer
 import logging
 logger = logging.getLogger(__name__)
 
-class ILQLModelForCausalLMWithILQLHeads(AutoModelForCausalLMWithILQLHeads):
-    def __init__(self, *args,hidden_size=None, up_sampling_score=False,**kwargs):
-        config = kwargs.get('config')
-        if hidden_size is None:
-            hidden_size = config.word_embed_proj_dim if getattr(config, 'word_embed_proj_dim', None) else config.hidden_size
+
+
+class TransformerForLM(TransformerBaichuanLMHeadModel):
+    def __init__(self, *args, **kwargs):
         # 如果显卡支持int8 可以开启
         load_in_8bit = kwargs.get('load_in_8bit', False)
         load_in_4bit = kwargs.get('load_in_4bit', False)
         if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
+            quantization_config = kwargs.get("quantization_config",None)
             if quantization_config:
                 load_in_4bit = quantization_config.load_in_4bit
 
         if not load_in_8bit and not load_in_4bit:
             kwargs.pop("device_map", None)
             kwargs.pop("quantization_config", None)
-        super(ILQLModelForCausalLMWithILQLHeads, self).__init__(*args,hidden_size=hidden_size,up_sampling_score=up_sampling_score, **kwargs)
+
+        super(TransformerForLM, self).__init__(*args, **kwargs)
+
+        # for param in self.model.parameters():
+        #     param.requires_grad = False  # freeze the model - train adapters later
+        #     if param.ndim == 1:
+        #         # cast the small parameters (e.g. layernorm) to fp32 for stability
+        #         param.data = param.data.to(torch.float32)
+
+        # class CastOutputToFloat(nn.Sequential):
+        #     def forward(self, x):
+        #         return super().forward(x).to(torch.float32)
+        #
+        # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
+
+
 
     def enable_input_require_grads(self):
-        setattr(self.model, 'model_parallel', True)
-        setattr(self.model, 'is_parallelizable', True)
+        # setattr(self.model, 'model_parallel', True)
+        # setattr(self.model, 'is_parallelizable', True)
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
 
-class MyILQLTransformer(ILQLModelForCausalLMWithILQLHeads, ILQLModelLoss,ModelWeightMinMax, with_pl=True):
-    def __init__(self, *args, new_num_tokens = None, **kwargs):
+
+class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+    def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
-        ilql_args: ILQLConfig = kwargs.pop('ilql_args', None)
-        if ilql_args is not None:
-            kwargs.update({
-                "two_qs": ilql_args.two_qs,
-                "alpha": ilql_args.alpha,
-            })
-        super(MyILQLTransformer, self).__init__(*args, **kwargs)
-
+        super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
-        self.ilql_config = ilql_args
         self.prompt_args = prompt_args
 
+        #可能扩充词表
         self.resize_token_embs(new_num_tokens)
 
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone, lora_args, auto_prepare_kbit_training=False)
+            model: LoraModel = LoraModel(self.backbone, lora_args,auto_prepare_kbit_training=False)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
@@ -69,7 +75,14 @@ class MyILQLTransformer(ILQLModelForCausalLMWithILQLHeads, ILQLModelLoss,ModelWe
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
 
-    def resize_token_embs(self, new_num_tokens):
+        elif prompt_args is not None and prompt_args.with_prompt:
+            self.backbone.enable_input_require_grads()
+            model: PromptModel = get_prompt_model(self.backbone, prompt_args)
+            print('==' * 30, 'prompt info')
+            model.print_trainable_parameters()
+            self.set_model(model, copy_attr=False)
+
+    def resize_token_embs(self,new_num_tokens):
         if new_num_tokens is not None:
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
@@ -96,41 +109,18 @@ class MyILQLTransformer(ILQLModelForCausalLMWithILQLHeads, ILQLModelLoss,ModelWe
             return [(self.backbone, lr)]
         elif self.prompt_args and self.prompt_args.with_prompt:
             return [(self.backbone, lr)]
-        return super(MyILQLTransformer, self).get_model_lr(model, lr)
+        return super(MyTransformer, self).get_model_lr(model, lr)
 
-    def get_llm_model(self) -> PreTrainedModel:
+
+    def get_llm_model(self) -> BaichuanForCausalLM:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:
-            # PromptModel 方法覆盖原来方法
+            #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model
 
-    @torch.no_grad()
-    def generate(self,*args,**kwargs):
-        return self.get_llm_model().generate(*args,**kwargs)
-
-    def configure_optimizers(self):
-        p = self.get_named_parameters(self.backbone)
-        training_args = self.training_args
-        optimizer = AdamW(p, lr=training_args.learning_rate,
-                          eps=training_args.adam_epsilon,
-                          betas=training_args.optimizer_betas,
-                          weight_decay=training_args.weight_decay)
-        return optimizer
 
 
-    def training_step(self,*args, **inputs):
-        outputs = self.compute_loss(*args, **inputs)
-        return outputs
-
-    def validation_step(self, batch):
-        outputs = self.compute_loss(**batch)
-        return outputs
-
-    def compute_loss(self, *args, **inputs):
-        return self.forward_ilql_loss(*args, **inputs)
 
 
-    def forward_logits_values(self,*args,**kwargs):
-        return self.model.forward(*args,**kwargs)

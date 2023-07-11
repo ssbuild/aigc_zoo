@@ -81,6 +81,11 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         logits_processor.append(InvalidScoreLogitsProcessor())
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+
+        output_scores = gen_kwargs.get('output_scores', False)
+        if output_scores:
+            gen_kwargs['return_dict_in_generate'] = True
+
         # inputs = self.build_inputs(tokenizer, query, history=history)
         if not history:
             prompt = query
@@ -93,6 +98,10 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         inputs = tokenizer([prompt], return_tensors="pt")
         inputs = inputs.to(self.device)
         outputs = self.generate(**inputs, **gen_kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
+
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
@@ -185,7 +194,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMinMax, with_pl=T
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
             embedding_size = model.get_input_embeddings().weight.shape[0]
-            if new_num_tokens != embedding_size:
+            if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
                 if (self.lora_args is not None and self.lora_args.with_lora) or (
                         self.prompt_args is not None and self.prompt_args.with_prompt):

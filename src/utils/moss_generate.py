@@ -18,8 +18,6 @@ def convert_tokens_to_string(self, tokens):
 MossTokenizer.convert_tokens_to_string = convert_tokens_to_string
 
 
-
-
 class Generate:
     def __init__(self,model,
                  tokenizer,
@@ -69,16 +67,26 @@ class Generate:
         
 
     @torch.no_grad()
-    def generate_text(self,tokenizer,text: str,max_length=2048,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
-        tokens = tokenizer.encode_plus(text, max_length=512, truncation=True, return_tensors='pt')
+    def generate_text(self,text: str,max_length=2048,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
+        output_scores = kwargs.get('output_scores', False)
+        if output_scores:
+            kwargs['return_dict_in_generate'] = True
+
+        tokens = self.tokenizer.encode_plus(text, max_length=512, truncation=True, return_tensors='pt')
         input_ids, attention_mask = tokens['input_ids'], tokens['attention_mask']
 
         input_ids = input_ids.to(self.model.device)
         attention_mask = attention_mask.to(self.model.device)
-        response = self.model.generate(input_ids=input_ids, attention_mask=attention_mask,
-                                 max_length=max_length, do_sample=do_sample, top_p=top_p, temperature=temperature, **kwargs)
-
-        response = tokenizer.decode(response[0])
+        outputs = self.model.generate(input_ids=input_ids,
+                                      attention_mask=attention_mask,
+                                      max_length=max_length,
+                                      do_sample=do_sample,
+                                      top_p=top_p,
+                                      temperature=temperature, **kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
+        response = self.tokenizer.decode(outputs[0])
         return response
 
     @torch.no_grad()
@@ -104,7 +112,10 @@ class Generate:
         kwargs.update(self.param)
         tokens = self.tokenizer.batch_encode_plus([self.prefix + text], return_tensors="pt")
         input_ids, attention_mask = tokens['input_ids'], tokens['attention_mask']
-        outputs = self.chat_inner(input_ids, attention_mask,**kwargs)
+        outputs,scores = self.chat_inner(input_ids, attention_mask,**kwargs)
+        if scores is not None:
+            return scores[0]
+
         preds = self.tokenizer.batch_decode(outputs)
         res = self.postprocess_remove_prefix(preds[0])
         return res
@@ -113,20 +124,24 @@ class Generate:
         return preds_i[len(self.prefix):]
 
     @torch.no_grad()
-    def chat_inner(self, input_ids, attention_mask,
-               temperature=0.7,
-               repetition_penalty=1.1,
-               top_k=0,
-               top_p=0.92,
-               max_iterations=1024,
-               regulation_start=512,
-               length_penalty=1,
-               max_time=60,
-               extra_ignored_tokens=None,
-               **kwargs,
-               ):
+    def chat_inner(self, input_ids,
+                   attention_mask,
+                   temperature=0.7,
+                   repetition_penalty=1.1,
+                   top_k=0,
+                   top_p=0.92,
+                   max_iterations=1024,
+                   regulation_start=512,
+                   length_penalty=1,
+                   max_time=60,
+                   extra_ignored_tokens=None,
+                   **kwargs):
         """
         """
+        output_scores = kwargs.get('output_scores', False)
+        scores = () if output_scores else None
+
+
         assert input_ids.dtype == torch.int64 and attention_mask.dtype == torch.int64
 
         self.bsz, self.seqlen = input_ids.shape
@@ -136,12 +151,9 @@ class Generate:
 
         moss_stopwords = self.moss_stopwords.to(input_ids.device)
 
-        queue_for_moss_stopwords = torch.empty(size=(self.bsz, len(self.moss_stopwords)), device=input_ids.device,
-                                               dtype=input_ids.dtype)
-        queue_for_tool_startwords = torch.empty(size=(self.bsz, len(self.tool_startwords)), device=input_ids.device,
-                                                dtype=input_ids.dtype)
-        queue_for_tool_stopwords = torch.empty(size=(self.bsz, len(self.tool_stopwords)), device=input_ids.device,
-                                               dtype=input_ids.dtype)
+        queue_for_moss_stopwords = torch.empty(size=(self.bsz, len(self.moss_stopwords)), device=input_ids.device,dtype=input_ids.dtype)
+        queue_for_tool_startwords = torch.empty(size=(self.bsz, len(self.tool_startwords)), device=input_ids.device,dtype=input_ids.dtype)
+        queue_for_tool_stopwords = torch.empty(size=(self.bsz, len(self.tool_stopwords)), device=input_ids.device,dtype=input_ids.dtype)
 
         all_shall_stop = torch.tensor([False] * self.bsz, device=input_ids.device)
 
@@ -152,12 +164,12 @@ class Generate:
 
         past_key_values = None
         for i in range(int(max_iterations)):
-            logits, past_key_values = self.infer_(input_ids if i == 0 else new_generated_id, attention_mask,
+            logits, past_key_values = self.infer_(input_ids if i == 0 else new_generated_id,
+                                                  attention_mask,
                                                   past_key_values)
 
             if i == 0:
-                logits = logits.gather(1,
-                                       last_token_indices.view(self.bsz, 1, 1).repeat(1, 1, self.config.vocab_size)).squeeze(1)
+                logits = logits.gather(1, last_token_indices.view(self.bsz, 1, 1).repeat(1, 1, self.config.vocab_size)).squeeze(1)
             else:
                 logits = logits[:, -1, :]
 
@@ -172,6 +184,9 @@ class Generate:
                 logits.scatter_(1, input_ids, score)
 
             logits = logits / temperature
+
+            if output_scores:
+                scores += (logits,)
 
             filtered_logits = self.top_k_top_p_filtering(logits, top_k, top_p)
             probabilities = torch.softmax(filtered_logits, dim=-1)
@@ -212,7 +227,7 @@ class Generate:
             elif time.time() - start_time > max_time:
                 break
 
-        return input_ids
+        return input_ids,scores
 
     def top_k_top_p_filtering(self, logits, top_k, top_p, filter_value=-float("Inf"), min_tokens_to_keep=1, ):
         if top_k > 0:
