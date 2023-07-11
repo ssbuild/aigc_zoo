@@ -67,6 +67,10 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
 
+        output_scores = gen_kwargs.get('output_scores', False)
+        if output_scores:
+            gen_kwargs['return_dict_in_generate'] = True
+
         tokenizer: ChatGLMTokenizer
         inputs_ids = tokenizer.encode(query)
         inputs_ids = torch.tensor(inputs_ids[:-2] + inputs_ids[:-2],dtype=torch.int32).unsqueeze(0)
@@ -75,6 +79,9 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         attention_mask = attention_mask.to(self.device)
         position_ids = position_ids.to(self.device)
         outputs = self.generate(inputs_ids=inputs_ids,attention_mask=attention_mask,position_ids=position_ids, **gen_kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
         outputs = outputs.tolist()[0][len(inputs_ids[0]):]
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
@@ -89,6 +96,10 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         logits_processor.append(InvalidScoreLogitsProcessor())
         gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        output_scores = gen_kwargs.get('output_scores', False)
+        if output_scores:
+            gen_kwargs['return_dict_in_generate'] = True
+
         if not history:
             prompt = query
         else:
@@ -99,6 +110,9 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         inputs = tokenizer([prompt], return_tensors="pt")
         inputs = inputs.to(self.device)
         outputs = self.generate(**inputs, **gen_kwargs)
+        if output_scores:
+            score = outputs.scores[0]
+            return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
