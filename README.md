@@ -2,8 +2,9 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    07-11 support generate for score , support baichuan2
     07-07 fix https://github.com/ssbuild/aigc_zoo/issues/1
-	06-16 initial aigc_zoo
+    06-16 initial aigc_zoo
 ```
 
 ## install
