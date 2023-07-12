@@ -67,19 +67,18 @@ class Generate:
         
 
     @torch.no_grad()
-    def generate_text(self,text: str,max_length=2048,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
+    def generate_text(self,text: str,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
         output_scores = kwargs.get('output_scores', False)
         if output_scores:
             kwargs['return_dict_in_generate'] = True
 
-        tokens = self.tokenizer.encode_plus(text, max_length=512, truncation=True, return_tensors='pt')
+        tokens = self.tokenizer.encode_plus(text,  return_tensors='pt')
         input_ids, attention_mask = tokens['input_ids'], tokens['attention_mask']
 
         input_ids = input_ids.to(self.model.device)
         attention_mask = attention_mask.to(self.model.device)
         outputs = self.model.generate(input_ids=input_ids,
                                       attention_mask=attention_mask,
-                                      max_length=max_length,
                                       do_sample=do_sample,
                                       top_p=top_p,
                                       temperature=temperature, **kwargs)
@@ -130,7 +129,7 @@ class Generate:
                    repetition_penalty=1.1,
                    top_k=0,
                    top_p=0.92,
-                   max_iterations=1024,
+                   max_iterations=2048,
                    regulation_start=512,
                    length_penalty=1,
                    max_time=60,

@@ -9,9 +9,9 @@ from transformers import PreTrainedModel
 class Generate:
     @classmethod
     @torch.no_grad()
-    def generate(cls,model: PreTrainedModel, tokenizer, query: str, max_length: int = 2048, num_beams=1,
+    def generate(cls,model: PreTrainedModel, tokenizer, query: str, num_beams=1,
              do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs):
-        gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
+        gen_kwargs = {"num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
         output_scores = gen_kwargs.get('output_scores', False)
         if output_scores:
@@ -31,12 +31,12 @@ class Generate:
 
     @classmethod
     @torch.no_grad()
-    def chat(cls, model: PreTrainedModel, tokenizer, query: str, history: List[Tuple[str, str]] = None, max_length: int = 2048, num_beams=1,
+    def chat(cls, model: PreTrainedModel, tokenizer, query: str, history: List[Tuple[str, str]] = None, num_beams=1,
              do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs):
         if history is None:
             history = []
 
-        gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
+        gen_kwargs = {"num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
 
         output_scores = gen_kwargs.get('output_scores', False)
