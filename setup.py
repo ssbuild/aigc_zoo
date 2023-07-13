@@ -13,7 +13,7 @@ package_dir.update({'aigc_zoo': 'src'})
 if __name__ == '__main__':
     setup(
         name='aigc_zoo',
-        version='0.1.11.post1',
+        version='0.1.11.post2',
         description='AIGC zoo',
         long_description='torch_training: https://github.com/ssbuild/aigc_zoo.git',
         license='Apache License 2.0',
