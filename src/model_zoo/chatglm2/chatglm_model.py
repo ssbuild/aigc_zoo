@@ -72,14 +72,14 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
 
 
     @torch.no_grad()
-    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None, max_length: int = 2048, num_beams=1,
+    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,
              do_sample=True, top_p=0.8, temperature=0.8, logits_processor=None, **kwargs):
         if history is None:
             history = []
         if logits_processor is None:
             logits_processor = LogitsProcessorList()
         logits_processor.append(InvalidScoreLogitsProcessor())
-        gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
+        gen_kwargs = {"do_sample": do_sample, "top_p": top_p,
                       "temperature": temperature, "logits_processor": logits_processor, **kwargs}
 
         output_scores = gen_kwargs.get('output_scores', False)
