@@ -2,6 +2,7 @@
 # @Time:  22:42
 # @Author: tk
 # @File：moss_genetate
+import math
 import typing
 
 import torch
@@ -60,14 +61,13 @@ class Generate:
             "max_time": 60,
             "repetition_penalty": 1.02,
             "num_return_sequences": 1,
-            "max_iterations": 512,
             "regulation_start": 512,
             "prefix_length": len(self.prefix),
         }
         
 
     @torch.no_grad()
-    def generate_text(self,text: str,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
+    def generate(self,text: str,do_sample=False, top_p=0.7, temperature=0.95,**kwargs):
         output_scores = kwargs.get('output_scores', False)
         if output_scores:
             kwargs['return_dict_in_generate'] = True
@@ -129,7 +129,6 @@ class Generate:
                    repetition_penalty=1.1,
                    top_k=0,
                    top_p=0.92,
-                   max_iterations=2048,
                    regulation_start=512,
                    length_penalty=1,
                    max_time=60,
@@ -137,6 +136,13 @@ class Generate:
                    **kwargs):
         """
         """
+        max_new_tokens = 2048
+        if 'max_new_tokens' in kwargs:
+            max_new_tokens = kwargs['max_new_tokens']
+        else:
+            if 'max_length' in kwargs:
+                max_new_tokens = max(kwargs['max_length'] - input_ids.size(1),0)
+
         output_scores = kwargs.get('output_scores', False)
         scores = () if output_scores else None
 
@@ -162,7 +168,7 @@ class Generate:
         generations, start_time = torch.ones(self.bsz, 1, dtype=torch.int64), time.time()
 
         past_key_values = None
-        for i in range(int(max_iterations)):
+        for i in range(int(max_new_tokens)):
             logits, past_key_values = self.infer_(input_ids if i == 0 else new_generated_id,
                                                   attention_mask,
                                                   past_key_values)
