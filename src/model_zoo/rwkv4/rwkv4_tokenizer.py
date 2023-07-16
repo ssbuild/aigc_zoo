@@ -66,8 +66,8 @@ class TRIE_TOKENIZER:
             sorted += [x]
             self.idx2token[idx] = x
 
-        # if 0 not in self.idx2token:
-        #     self.idx2token[0] = "<|endoftext|>".encode("utf-8")
+        if 0 not in self.idx2token:
+            self.idx2token[0] = "<|endoftext|>".encode("utf-8")
 
         self.token2idx = {}
         for k, v in self.idx2token.items():
@@ -195,8 +195,8 @@ class RWKVTokenizer(AbstractTokenizer):
         for k,v in kwargs.items():
             setattr(self,k,v)
 
-        self.eod_id = 0  # self.tokenizer.token_to_id("<|endoftext|>")
-        self.pad_id = self.tokenizer.token_to_id("<|padding|>")
+        # self.eod_id = 0  # self.tokenizer.token_to_id("<|endoftext|>")
+        # self.pad_id = self.tokenizer.token_to_id("<|padding|>")
 
     @classmethod
     def from_pretrained(
