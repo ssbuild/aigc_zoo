@@ -2,10 +2,14 @@
 # @Time    : 2023/5/12 20:41
 # @Author  : tk
 # @FileName: llm_model
+import torch
 from deep_training.nlp.models.rwkv4.modeling_rwkv import TransformerRWKV4LMHeadModel, RwkvConfig, set_model_profile, \
     RwkvForCausalLM
 from deep_training.trainer.pl.modelweighter import *
 import logging
+
+from torch import nn
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,21 +34,26 @@ class TransformerRWKV4ForLM(TransformerRWKV4LMHeadModel):
         #     if param.ndim == 1:
         #         # cast the small parameters (e.g. layernorm) to fp32 for stability
         #         param.data = param.data.to(torch.float32)
-
+        #
         # class CastOutputToFloat(nn.Sequential):
         #     def forward(self, x):
         #         return super().forward(x).to(torch.float32)
         #
-        # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
+        # self.model.head = CastOutputToFloat(self.model.head)
 
 
 
     def enable_input_require_grads(self):
-        pass
         # setattr(self.model, 'model_parallel', True)
         # setattr(self.model, 'is_parallelizable', True)
         # # self.model.gradient_checkpointing_enable()
         # self.model.enable_input_require_grads()
+        m: PreTrainedModel = self.model
+        if hasattr(m,'_require_grads_hook'):
+            m.disable_input_require_grads()
+        m.enable_input_require_grads()
+
+
 
 
 

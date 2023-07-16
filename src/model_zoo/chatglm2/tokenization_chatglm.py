@@ -17,7 +17,7 @@ class SPTokenizer:
         self.n_words: int = self.sp_model.vocab_size()
         self.bos_id: int = self.sp_model.bos_id()
         self.eos_id: int = self.sp_model.eos_id()
-        self.pad_id: int = self.sp_model.eos_id()
+        self.pad_id: int = self.sp_model.unk_id()
         assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 
         special_tokens = ["[MASK]", "[gMASK]", "[sMASK]", "sop", "eop"]
@@ -55,7 +55,7 @@ class SPTokenizer:
 
     def convert_id_to_token(self, index):
         """Converts an index (integer) in a token (str) using the vocab."""
-        if index in self.index_special_tokens:
+        if index in self.index_special_tokens or index in [self.eos_id, self.bos_id, self.pad_id] or index < 0:
             return ""
         return self.sp_model.IdToPiece(index)
 
@@ -66,9 +66,10 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     model_input_names = ["input_ids", "attention_mask", "position_ids"]
 
     def __init__(self, vocab_file, padding_side="left", **kwargs):
-        super().__init__(padding_side=padding_side, **kwargs)
+        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=False, **kwargs)
         self.name = "GLMTokenizer"
 
+        self.vocab_file = vocab_file
         self.tokenizer = SPTokenizer(vocab_file)
         self.special_tokens = {
             "<bos>": self.tokenizer.bos_id,
@@ -83,12 +84,24 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         return self.tokenizer.special_tokens[token]
 
     @property
+    def unk_token(self) -> str:
+        return "<unk>"
+
+    @property
     def pad_token(self) -> str:
-        return "</s>"
+        return "<unk>"
 
     @property
     def pad_token_id(self):
         return self.get_command("<pad>")
+
+    @property
+    def eos_token(self) -> str:
+        return "</s>"
+
+    @property
+    def eos_token_id(self):
+        return self.get_command("<eos>")
 
     @property
     def vocab_size(self):
@@ -145,6 +158,15 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     def get_prefix_tokens(self):
         prefix_tokens = [self.get_command("[gMASK]"), self.get_command("sop")]
         return prefix_tokens
+
+    def build_prompt(self, query, history=None):
+        if history is None:
+            history = []
+        prompt = ""
+        for i, (old_query, response) in enumerate(history):
+            prompt += "[Round {}]\n\n问：{}\n\n答：{}\n\n".format(i + 1, old_query, response)
+        prompt += "[Round {}]\n\n问：{}\n\n答：".format(len(history) + 1, query)
+        return prompt
 
     def build_inputs_with_special_tokens(
             self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None

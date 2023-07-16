@@ -86,17 +86,7 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         if output_scores:
             gen_kwargs['return_dict_in_generate'] = True
 
-        # inputs = self.build_inputs(tokenizer, query, history=history)
-        if not history:
-            prompt = query
-        else:
-            prompt = ""
-            for i, (old_query, response) in enumerate(history):
-                prompt += "[Round {}]\n问：{}\n答：{}\n".format(i, old_query, response)
-            prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
-
-        inputs = tokenizer([prompt], return_tensors="pt")
-        inputs = inputs.to(self.device)
+        inputs = self.build_inputs(tokenizer, query, history=history)
         outputs = self.generate(**inputs, **gen_kwargs)
         if output_scores:
             score = outputs.scores[0]
