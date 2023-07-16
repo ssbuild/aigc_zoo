@@ -37,6 +37,6 @@ torch >= 2
 - [t5_rlhf](https://github.com/ssbuild/t5_rlhf)
 - [rwkv_finetuning](https://github.com/ssbuild/rwkv_finetuning)
 - [baichuan_finetuning](https://github.com/ssbuild/baichuan_finetuning)
-
+- [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
 ## 
     纯粹而干净的代码
