@@ -21,7 +21,7 @@ if __name__ == '__main__':
         author='ssbuild',
         author_email='9727464@qq.com',
         install_requires=[
-            'deep_training>=0.1.11,<=0.1.13',
+            'deep_training>=0.1.12,<=0.1.13',
             'numpy_io>=0.0.7',
         ],
         packages= list(package_dir.keys()),
