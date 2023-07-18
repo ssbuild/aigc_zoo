@@ -2,18 +2,23 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
-    07-16 support rwkv world , and fix some bugs
+    07-18 support InternLM 
+    07-16 support rwkv world and fix some bugs
     07-11 support generate for score , support baichuan2
     07-07 fix https://github.com/ssbuild/aigc_zoo/issues/1
     06-16 initial aigc_zoo
 ```
 
 ## install
-  - pip install -U -r requirements.txt
-  - 如果无法安装， 可以切换官方源 pip install -i https://pypi.org/simple -U -r requirements.txt
   - 源码安装 
-pip uninstall aigc_zoo
-pip install -U git+https://github.com/ssbuild/aigc_zoo.git
+```text
+ pip uninstall aigc_zoo
+ pip install -U git+https://github.com/ssbuild/aigc_zoo.git
+```
+  - 重装 
+```text
+pip install -U git+https://github.com/ssbuild/aigc_zoo.git --no-deps --force-reinstall
+```
 
 ```text
 推荐环境 
@@ -39,6 +44,7 @@ torch >= 2
 - [rwkv_finetuning](https://github.com/ssbuild/rwkv_finetuning)
 - [baichuan_finetuning](https://github.com/ssbuild/baichuan_finetuning)
 - [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
+- [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
 ## 
     纯粹而干净的代码
 
