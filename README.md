@@ -41,3 +41,10 @@ torch >= 2
 - [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
 ## 
     纯粹而干净的代码
+
+
+
+## 训练经验分享
+
+(Chatglm2-lora微调)[https://blog.csdn.net/feifeiyechuan/article/details/131458322]
+(DoctorGLM 基于ChatGLM-6B的中文问诊模型)[https://modelnet.ai/modeldoc/bb2aac4ba2a44f0b96af958f10f57ec4]
