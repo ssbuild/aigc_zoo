@@ -45,6 +45,5 @@ torch >= 2
 
 
 ## 训练经验分享
-
-(Chatglm2-lora微调)[https://blog.csdn.net/feifeiyechuan/article/details/131458322]
-(DoctorGLM 基于ChatGLM-6B的中文问诊模型)[https://modelnet.ai/modeldoc/bb2aac4ba2a44f0b96af958f10f57ec4]
+[Chatglm2-lora微调](https://blog.csdn.net/feifeiyechuan/article/details/131458322) <br>
+[DoctorGLM: 基于ChatGLM-6B的中文问诊模型](https://modelnet.ai/modeldoc/bb2aac4ba2a44f0b96af958f10f57ec4)
