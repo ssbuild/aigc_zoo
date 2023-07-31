@@ -14,6 +14,11 @@
 ```text
  pip uninstall aigc_zoo
  pip install -U git+https://github.com/ssbuild/aigc_zoo.git
+ 
+ or 
+ git clone https://github.com/ssbuild/aigc_zoo.git
+ cd aigc_zoo && python setup.py install
+ 
 ```
   - 重装 
 ```text

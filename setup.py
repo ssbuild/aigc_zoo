@@ -21,6 +21,8 @@ if __name__ == '__main__':
         author='ssbuild',
         author_email='9727464@qq.com',
         install_requires=[
+            'lightning>=2.0',
+            'protobuf<=4.0',
             'deep_training>=0.1.12,<=0.1.15',
             'numpy_io>=0.0.7',
         ],
