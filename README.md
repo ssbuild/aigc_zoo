@@ -10,18 +10,12 @@
 ```
 
 ## install
-  - 源码安装1
+  - 源码安装
 ```text
  pip uninstall aigc_zoo
  pip install -U git+https://github.com/ssbuild/aigc_zoo.git
 ```
 
-```
-  - 源码安装2
-```text
- git clone https://github.com/ssbuild/aigc_zoo.git
- cd aigc_zoo && python setup.py build install
- ```
 
 ```text
 推荐环境 
