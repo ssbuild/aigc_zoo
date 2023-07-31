@@ -20,7 +20,7 @@
   - 源码安装2
 ```text
  git clone https://github.com/ssbuild/aigc_zoo.git
- cd aigc_zoo && python setup.py install
+ cd aigc_zoo && python setup.py build install
  ```
 
 ```text
