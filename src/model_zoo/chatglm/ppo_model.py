@@ -8,7 +8,7 @@ from deep_training.nlp.rl.ppo.ppo_module import PPOModelLoss
 from transformers import AdamW
 from deep_training.nlp.optimizer.lion import Lion
 from .llm_model import MyChatGLMForConditionalGeneration
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class MyChatglmModelForCausalPrefixLMWithValueHead(ChatglmModelForCausalPrefixLM
 
 
 
-class MyPPOTransformer(MyChatglmModelForCausalPrefixLMWithValueHead,PPOModelLoss,ModelWeightMinMax, with_pl=True):
+class MyPPOTransformer(MyChatglmModelForCausalPrefixLMWithValueHead,PPOModelLoss,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         ppo_args: PPOConfig = kwargs.pop('ppo_args', None)

@@ -2,7 +2,7 @@
 # @Author  : ssbuild
 # @Time    : 2023/5/29 13:34
 import torch
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from torch import nn
 from deep_training.nlp.models.transformer_base import TransformerBase
 from .llm_model import MyChatGLMForConditionalGeneration
@@ -141,7 +141,7 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
 
 # 训练
 
-class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMinMax, with_pl=True):
+class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         super(MyRewardTransformer, self).__init__(*args, **kwargs)

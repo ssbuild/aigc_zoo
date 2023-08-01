@@ -9,12 +9,12 @@ import re
 import warnings
 from typing import List, Tuple, Optional, Callable
 import torch
-from deep_training.nlp.models.chatglm2.modeling_chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig, logger,setup_model_profile
+from deep_training.nlp.models.chatglm2.modeling_chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig,setup_model_profile
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
 from .tokenization_chatglm import ChatGLMTokenizer
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 
 
-class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMinMax, with_pl=True):
+class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraArguments = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)

@@ -4,7 +4,7 @@
 import torch
 from torch import nn
 from deep_training.nlp.models.transformer import TransformerForSeq2SeqLM
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class RewardT5Model(TransformerForSeq2SeqLM):
 
 
 
-class RewardTransformer(RewardT5Model,ModelWeightMinMax, with_pl=True):
+class RewardTransformer(RewardT5Model,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         super(RewardTransformer, self).__init__(*args, **kwargs)

@@ -3,7 +3,7 @@
 # @Author  : tk
 # @FileName: llm_model
 from deep_training.nlp.models.baichuan.modeling_baichuan import BaiChuanForCausalLM,TransformerBaiChuanLMHeadModel,BaiChuanConfig
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from .tokenization_baichuan import BaiChuanTokenizer
 import logging
 logger = logging.getLogger(__name__)

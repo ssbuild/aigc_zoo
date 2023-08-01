@@ -2,14 +2,14 @@
 # @Author  : ssbuild
 # @Time    : 2023/5/29 16:14
 import re
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from torch import nn
 from .moss_model import MyTransformerMossForCausalLM,MossConfig,MossTokenizer,MyMossForCausalLM
 import logging
 logger = logging.getLogger(__name__)
 
 
-class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMinMax, with_pl=True):
+class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args',None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

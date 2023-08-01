@@ -3,7 +3,7 @@
 # @Author  : tk
 # @FileName: llm_model
 from deep_training.nlp.models.internlm.modeling_internlm import InternLMForCausalLM,TransformerInternLMHeadModel,InternLMConfig
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from .tokenization_internlm import InternLMTokenizer
 import logging
 logger = logging.getLogger(__name__)

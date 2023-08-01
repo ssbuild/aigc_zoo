@@ -9,7 +9,7 @@ from deep_training.nlp.models.rl.modeling_ppo import AutoModelForCausalLMWithVal
 from deep_training.nlp.rl.ppo.configuration import PPOConfig,PPOArguments
 from deep_training.nlp.rl.ppo.ppo_module import PPOModelLoss
 from transformers import AdamW
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class PPOModelForCausalLMWithValueHead(AutoModelForCausalLMWithValueHead):
 
 
 
-class MyPPOTransformer(PPOModelForCausalLMWithValueHead, PPOModelLoss,ModelWeightMinMax, with_pl=True):
+class MyPPOTransformer(PPOModelForCausalLMWithValueHead, PPOModelLoss,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

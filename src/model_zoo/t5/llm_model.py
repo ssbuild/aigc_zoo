@@ -3,7 +3,7 @@
 # @FileName: models
 
 from deep_training.nlp.models.transformer import TransformerForSeq2SeqLM
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from transformers import T5ForConditionalGeneration
 import logging
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class TransformerForLM(TransformerForSeq2SeqLM):
 
 
 
-class MyTransformer(TransformerForLM,ModelWeightMinMax, with_pl=True):
+class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

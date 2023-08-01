@@ -5,7 +5,7 @@ import torch
 from deep_training.nlp.models.rl.modeling_ppo import AutoModelForSeq2SeqLMWithValueHead
 from deep_training.nlp.rl.ppo.configuration import PPOConfig,PPOArguments
 from deep_training.nlp.rl.ppo.ppo_module import PPOModelLoss
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 from transformers import AdamW
 import logging
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class MyModelForSeq2SeqLMWithValueHead(AutoModelForSeq2SeqLMWithValueHead):
 
 
 
-class MyPPOTransformer(MyModelForSeq2SeqLMWithValueHead,PPOModelLoss,ModelWeightMinMax, with_pl=True):
+class MyPPOTransformer(MyModelForSeq2SeqLMWithValueHead,PPOModelLoss,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         ppo_args: PPOConfig = kwargs.pop('ppo_args', None)

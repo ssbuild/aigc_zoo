@@ -6,7 +6,7 @@ from deep_training.nlp.rl.ilql.configuration import ILQLArguments, ILQLConfig
 from deep_training.nlp.rl.ilql.ilql_module import ILQLModelLoss
 from deep_training.nlp.models.rl.modeling_ilql import AutoModelForCausalLMWithILQLHeads
 from transformers import AdamW
-from deep_training.trainer.pl.modelweighter import *
+from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class ILQLModelForCausalLMWithILQLHeads(AutoModelForCausalLMWithILQLHeads):
         self.model.enable_input_require_grads()
 
 
-class MyILQLTransformer(ILQLModelForCausalLMWithILQLHeads, ILQLModelLoss,ModelWeightMinMax, with_pl=True):
+class MyILQLTransformer(ILQLModelForCausalLMWithILQLHeads, ILQLModelLoss,ModelWeightMixin, with_pl=True):
     def __init__(self, *args, new_num_tokens = None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
