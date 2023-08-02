@@ -6,8 +6,9 @@
 from setuptools import setup, find_packages
 
 install_requires = [
-    'deep_training>=0.1.13,<=0.1.15',
-    'numpy_io>=0.0.7',
+    # 'deep_training>=0.1.13,<=0.1.15',
+    'deep_training ~= 0.1.13.post0'
+    'numpy_io>=0.0.8',
 ]
 
 if __name__ == '__main__':
