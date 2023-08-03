@@ -12,7 +12,9 @@ import torch
 from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig,QWenLMHeadModel,setup_model_profile
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
-from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
+from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList, \
+    PreTrainedTokenizer
+from .qwen_generation_utils import HistoryType, make_context, get_stop_words_ids, decode_tokens
 from .tokenization_qwen import QWenTokenizer
 from ...weight.modelweighter import *
 import logging
@@ -23,6 +25,53 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
         super(MyQWenLMHeadModel, self).__init__(config)
 
 
+    def chat(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        query: str,
+        history: Optional[HistoryType],
+        system: str = "You are a helpful assistant.",
+        append_history: bool = True,
+        **kwargs
+    ) -> Tuple[str, HistoryType]:
+
+        if history is None:
+            history = []
+
+        raw_text, context_tokens = make_context(
+            tokenizer,
+            query,
+            history=history,
+            system=system,
+            max_window_size=6144,
+            chat_format=self.generation_config.chat_format,
+        )
+
+        stop_words_ids = get_stop_words_ids(
+            self.generation_config.chat_format, tokenizer
+        )
+        input_ids = torch.tensor([context_tokens]).to(self.device)
+
+        outputs = self.generate(
+            input_ids,
+            stop_words_ids=stop_words_ids,
+            return_dict_in_generate=False,
+            **kwargs,
+        )
+
+        response = decode_tokens(
+            outputs[0],
+            tokenizer,
+            raw_text_len=len(raw_text),
+            context_length=len(context_tokens),
+            chat_format=self.generation_config.chat_format,
+            verbose=False,
+        )
+
+        if append_history:
+            history.append((query, response))
+
+        return response, history
 
 class MyTransformerForQwen(TransformerBase):
     def __init__(self, *args,**kwargs):

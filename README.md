@@ -42,6 +42,7 @@ torch >= 2
 - [baichuan_finetuning](https://github.com/ssbuild/baichuan_finetuning)
 - [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
 - [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
+- [qwen_finetuning](https://github.com/ssbuild/qwen_finetuning)
 ## 
     纯粹而干净的代码
 
