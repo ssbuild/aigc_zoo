@@ -13,7 +13,7 @@ from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig,QWenLMHeadMod
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
-from .tokenization_chatglm import ChatGLMTokenizer
+from .tokenization_qwen import QWenTokenizer
 from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
