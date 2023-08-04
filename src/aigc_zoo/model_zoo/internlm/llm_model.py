@@ -2,7 +2,7 @@
 # @Time    : 2023/07/18 10:41
 # @Author  : tk
 # @FileName: llm_model
-from deep_training.nlp.models.internlm.modeling_internlm import InternLMForCausalLM,TransformerInternLMHeadModel,InternLMConfig
+from deep_training.nlp.models.internlm.modeling_internlm import InternLMForCausalLM,TransformerInternLMHeadModel,InternLMConfig,setup_model_profile
 from ...weight.modelweighter import *
 from .tokenization_internlm import InternLMTokenizer
 import logging

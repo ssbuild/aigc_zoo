@@ -2,7 +2,7 @@
 # @Time    : 2023/5/12 20:41
 # @Author  : tk
 # @FileName: llm_model
-from deep_training.nlp.models.baichuan.modeling_baichuan import BaiChuanForCausalLM,TransformerBaiChuanLMHeadModel,BaiChuanConfig
+from deep_training.nlp.models.baichuan.modeling_baichuan import BaiChuanForCausalLM,TransformerBaiChuanLMHeadModel,BaiChuanConfig,setup_model_profile
 from ...weight.modelweighter import *
 from .tokenization_baichuan import BaiChuanTokenizer
 import logging
