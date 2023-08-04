@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    08-05 0.1.13.post0 fix some bugs
     07-18 support InternLM 
     07-16 support rwkv world and fix some bugs
     07-11 support generate for score , support baichuan2
