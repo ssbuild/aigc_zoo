@@ -7,7 +7,7 @@ import copy
 import os
 import re
 import warnings
-from typing import List, Tuple, Optional, Callable
+from typing import List, Tuple, Optional, Callable, Generator, Any
 import torch
 from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig,QWenLMHeadModel,setup_model_profile
 from deep_training.nlp.models.transformer import TransformerBase
@@ -72,6 +72,48 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             history.append((query, response))
 
         return response, history
+
+    def chat_stream(
+            self,
+            tokenizer: PreTrainedTokenizer,
+            query: str,
+            history: Optional[HistoryType],
+            system: str = "You are a helpful assistant.",
+            **kwargs
+    ) -> Generator[str, Any, None]:
+
+        if history is None:
+            history = []
+
+        raw_text, context_tokens = make_context(
+            tokenizer,
+            query,
+            history=history,
+            system=system,
+            max_window_size=6144,
+            chat_format=self.generation_config.chat_format,
+        )
+
+        stop_words_ids = get_stop_words_ids(
+            self.generation_config.chat_format, tokenizer
+        )
+        input_ids = torch.tensor([context_tokens]).to(self.device)
+
+        assert self.generation_config.chat_format == 'chatml'
+        from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
+        self.__class__.generate = NewGenerationMixin.generate
+        self.__class__.sample_stream = NewGenerationMixin.sample_stream
+        stream_config = StreamGenerationConfig(**self.generation_config.to_dict(), **kwargs, do_stream=True)
+
+        def stream_generator():
+            outputs = []
+            for token in self.generate(input_ids, return_dict_in_generate=False, generation_config=stream_config):
+                outputs.append(token.item())
+                if outputs[-1] in (tokenizer.im_end_id, tokenizer.im_start_id):
+                    break
+                yield tokenizer.decode(outputs, skip_special_tokens=True)
+
+        return stream_generator()
 
 class MyTransformerForQwen(TransformerBase):
     def __init__(self, *args,**kwargs):
