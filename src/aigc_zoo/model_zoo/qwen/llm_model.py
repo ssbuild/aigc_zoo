@@ -7,14 +7,17 @@ import copy
 import os
 import re
 import warnings
-from typing import List, Tuple, Optional, Callable, Generator, Any
+from typing import List, Tuple, Optional, Callable, Generator, Any, Union
 import torch
 from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig,QWenLMHeadModel,setup_model_profile
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList, \
     PreTrainedTokenizer
-from .qwen_generation_utils import HistoryType, make_context, get_stop_words_ids, decode_tokens
+from transformers.generation.utils import GenerateOutput
+
+from .qwen_generation_utils import HistoryType, make_context, get_stop_words_ids, decode_tokens, \
+    StopWordsLogitsProcessor
 from .tokenization_qwen import QWenTokenizer
 from ...weight.modelweighter import *
 import logging
@@ -24,6 +27,36 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
     def __init__(self,config):
         super(MyQWenLMHeadModel, self).__init__(config)
 
+    def generate(
+        self,
+        inputs: Optional[torch.Tensor] = None,
+        generation_config: Optional[GenerationConfig] = None,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        **kwargs,
+    ) -> Union[GenerateOutput, torch.LongTensor]:
+        # Process stop_words_ids.
+        stop_words_ids = kwargs.pop("stop_words_ids", None)
+        if stop_words_ids is None and generation_config is not None:
+            stop_words_ids = getattr(generation_config, "stop_words_ids", None)
+        if stop_words_ids is None:
+            stop_words_ids = getattr(self.generation_config, "stop_words_ids", None)
+
+        if stop_words_ids is not None:
+            stop_words_logits_processor = StopWordsLogitsProcessor(
+                stop_words_ids=stop_words_ids,
+                eos_token_id=self.generation_config.eos_token_id,
+            )
+            if logits_processor is None:
+                logits_processor = LogitsProcessorList([stop_words_logits_processor])
+            else:
+                logits_processor.append(stop_words_logits_processor)
+
+        return super().generate(
+            inputs,
+            generation_config=generation_config,
+            logits_processor=logits_processor,
+            **kwargs,
+        )
 
     def chat(
         self,
@@ -47,14 +80,15 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             chat_format=self.generation_config.chat_format,
         )
 
-        stop_words_ids = get_stop_words_ids(
-            self.generation_config.chat_format, tokenizer
-        )
+        if "stop_words_ids" not in kwargs:
+            stop_words_ids = get_stop_words_ids(
+                self.generation_config.chat_format, tokenizer
+            )
+            kwargs['stop_words_ids'] = stop_words_ids
         input_ids = torch.tensor([context_tokens]).to(self.device)
 
         outputs = self.generate(
             input_ids,
-            stop_words_ids=stop_words_ids,
             return_dict_in_generate=False,
             **kwargs,
         )
@@ -94,9 +128,11 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             chat_format=self.generation_config.chat_format,
         )
 
-        stop_words_ids = get_stop_words_ids(
-            self.generation_config.chat_format, tokenizer
-        )
+        if 'stop_words_ids' not in kwargs:
+            stop_words_ids = get_stop_words_ids(
+                self.generation_config.chat_format, tokenizer
+            )
+            kwargs['stop_words_ids'] = stop_words_ids
         input_ids = torch.tensor([context_tokens]).to(self.device)
 
         assert self.generation_config.chat_format == 'chatml'

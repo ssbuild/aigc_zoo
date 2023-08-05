@@ -174,7 +174,7 @@ class QWenTokenizer(PreTrainedTokenizer):
                 w.write(line)
         return (file_path,)
 
-    def tokenize(self, text: str, **kwargs) -> List[str]:
+    def tokenize(self, text: str,allowed_special='all', **kwargs) -> List[str]:
         """
         Converts a string in a sequence of tokens, replacing unknown tokens with the `unk_token`.
         Args:
@@ -191,7 +191,7 @@ class QWenTokenizer(PreTrainedTokenizer):
         tokens = []
         text = unicodedata.normalize("NFC", text)
 
-        for t in self.tokenizer.encode(text, **kwargs):
+        for t in self.tokenizer.encode(text, allowed_special=allowed_special,**kwargs):
             tokens.append(self.decoder[t])
 
         return tokens
