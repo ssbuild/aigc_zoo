@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    08-09 0.1.15 is merge to 0.1.16
     08-08 0.1.15.rc0 support xverse-13b
     08-05 0.1.13.post0 fix some bugs
     07-18 support InternLM 

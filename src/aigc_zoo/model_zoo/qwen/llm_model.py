@@ -28,11 +28,11 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
         super(MyQWenLMHeadModel, self).__init__(config)
 
     def generate(
-        self,
-        inputs: Optional[torch.Tensor] = None,
-        generation_config: Optional[GenerationConfig] = None,
-        logits_processor: Optional[LogitsProcessorList] = None,
-        **kwargs,
+            self,
+            inputs: Optional[torch.Tensor] = None,
+            generation_config: Optional[GenerationConfig] = None,
+            logits_processor: Optional[LogitsProcessorList] = None,
+            **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
         # Process stop_words_ids.
         stop_words_ids = kwargs.pop("stop_words_ids", None)
@@ -59,17 +59,23 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
         )
 
     def chat(
-        self,
-        tokenizer: PreTrainedTokenizer,
-        query: str,
-        history: Optional[HistoryType],
-        system: str = "You are a helpful assistant.",
-        append_history: bool = True,
-        **kwargs
+            self,
+            tokenizer: PreTrainedTokenizer,
+            query: str,
+            history: Optional[HistoryType],
+            system: str = "You are a helpful assistant.",
+            append_history: bool = True,
+            stop_words_ids: Optional[List[List[int]]] = None,
+            **kwargs
     ) -> Tuple[str, HistoryType]:
+
+        assert self.generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
 
         if history is None:
             history = []
+
+        if stop_words_ids is None:
+            stop_words_ids = []
 
         raw_text, context_tokens = make_context(
             tokenizer,
@@ -80,15 +86,14 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             chat_format=self.generation_config.chat_format,
         )
 
-        if "stop_words_ids" not in kwargs:
-            stop_words_ids = get_stop_words_ids(
-                self.generation_config.chat_format, tokenizer
-            )
-            kwargs['stop_words_ids'] = stop_words_ids
+        stop_words_ids.append(get_stop_words_ids(
+            self.generation_config.chat_format, tokenizer
+        ))
         input_ids = torch.tensor([context_tokens]).to(self.device)
 
         outputs = self.generate(
             input_ids,
+            stop_words_ids=stop_words_ids,
             return_dict_in_generate=False,
             **kwargs,
         )
@@ -116,9 +121,15 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             **kwargs
     ) -> Generator[str, Any, None]:
 
+        assert self.generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
         if history is None:
             history = []
 
+        stop_words_ids = kwargs.pop('stop_words_ids', [])
+        if not isinstance(stop_words_ids, list):
+            stop_words_ids = [stop_words_ids]
+
+        logits_processor = kwargs.pop('logits_processor', None)
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
@@ -128,26 +139,35 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             chat_format=self.generation_config.chat_format,
         )
 
-        if 'stop_words_ids' not in kwargs:
-            stop_words_ids = get_stop_words_ids(
-                self.generation_config.chat_format, tokenizer
+        stop_words_ids.extend(get_stop_words_ids(
+            self.generation_config.chat_format, tokenizer
+        ))
+        if stop_words_ids is not None:
+            stop_words_logits_processor = StopWordsLogitsProcessor(
+                stop_words_ids=stop_words_ids,
+                eos_token_id=self.generation_config.eos_token_id,
             )
-            kwargs['stop_words_ids'] = stop_words_ids
+            if logits_processor is None:
+                logits_processor = LogitsProcessorList([stop_words_logits_processor])
+            else:
+                logits_processor.append(stop_words_logits_processor)
         input_ids = torch.tensor([context_tokens]).to(self.device)
 
-        assert self.generation_config.chat_format == 'chatml'
         from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
-        self.__class__.generate = NewGenerationMixin.generate
+        self.__class__.generate_stream = NewGenerationMixin.generate
         self.__class__.sample_stream = NewGenerationMixin.sample_stream
-        stream_config = StreamGenerationConfig(**self.generation_config.to_dict(), **kwargs, do_stream=True)
+        stream_config = StreamGenerationConfig(**self.generation_config.to_dict(), do_stream=True)
 
         def stream_generator():
             outputs = []
-            for token in self.generate(input_ids, return_dict_in_generate=False, generation_config=stream_config):
+            for token in self.generate_stream(
+                    input_ids,
+                    return_dict_in_generate=False,
+                    generation_config=stream_config,
+                    logits_processor=logits_processor,
+                    **kwargs):
                 outputs.append(token.item())
-                if outputs[-1] in (tokenizer.im_end_id, tokenizer.im_start_id):
-                    break
-                yield tokenizer.decode(outputs, skip_special_tokens=True)
+                yield tokenizer.decode(outputs, skip_special_tokens=True, errors='ignore')
 
         return stream_generator()
 
