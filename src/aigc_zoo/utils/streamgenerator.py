@@ -15,6 +15,9 @@ class GenTextStreamer(TextStreamer):
             skip_word_list = list(set(skip_word_list))
         self.skip_word_list = skip_word_list
 
+        self.all_ids = []
+
+
 
     def put(self, value):
         """
@@ -40,7 +43,7 @@ class GenTextStreamer(TextStreamer):
                 if value_ids in self.skip_word_list:
                     return
 
-
+        self.all_ids.append(value_ids)
         # Add the new token to the cache and decodes the entire thing.
         self.token_cache.extend(value_ids)
         text = self.tokenizer.decode(self.token_cache, **self.decode_kwargs)
