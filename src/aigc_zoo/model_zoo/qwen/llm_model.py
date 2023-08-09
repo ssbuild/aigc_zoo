@@ -9,7 +9,8 @@ import re
 import warnings
 from typing import List, Tuple, Optional, Callable, Generator, Any, Union
 import torch
-from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig,QWenLMHeadModel,setup_model_profile
+from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig, QWenLMHeadModel, setup_model_profile, \
+    _ERROR_BAD_CHAT_FORMAT
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList, \
@@ -86,7 +87,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             chat_format=self.generation_config.chat_format,
         )
 
-        stop_words_ids.append(get_stop_words_ids(
+        stop_words_ids.extend(get_stop_words_ids(
             self.generation_config.chat_format, tokenizer
         ))
         input_ids = torch.tensor([context_tokens]).to(self.device)
