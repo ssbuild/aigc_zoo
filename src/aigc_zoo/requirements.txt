@@ -1,4 +1,4 @@
-deep_training~= 0.1.19
+deep_training~= 0.1.20
 transformers>=4.30
 bitsandbytes>=0.39
 accelerate>=0.20
