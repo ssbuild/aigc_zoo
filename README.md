@@ -2,7 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
-    08-16 0.1.20 release add 5 kind rope scale method
+    08-16 0.1.21 release add 5 kind rope scale method
     08-11 0.1.17.post0 update qwen config
     08-09 0.1.17 release
     08-08 0.1.15.rc0 support xverse-13b
