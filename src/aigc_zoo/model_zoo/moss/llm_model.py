@@ -2,6 +2,9 @@
 # @Author  : ssbuild
 # @Time    : 2023/5/29 16:14
 import re
+
+from deep_training.nlp.layers.rope_scale.patch import *
+
 from ...weight.modelweighter import *
 from torch import nn
 from .moss_model import MyTransformerMossForCausalLM,MossConfig,MossTokenizer,MyMossForCausalLM
@@ -10,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMixin, with_pl=True):
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args',None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
         num_layers_freeze = kwargs.pop('num_layers_freeze', -1)
@@ -18,6 +21,8 @@ class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMixin, with_pl=True)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
 
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
         # 可能扩充词表
         self.resize_token_embs(new_num_tokens)
 

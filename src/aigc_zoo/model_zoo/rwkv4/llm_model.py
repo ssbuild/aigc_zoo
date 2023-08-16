@@ -3,6 +3,7 @@
 # @Author  : tk
 # @FileName: llm_model
 import torch
+from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.rwkv4.modeling_rwkv import TransformerRWKV4LMHeadModel, RwkvConfig, set_model_profile, \
     RwkvForCausalLM
 from ...weight.modelweighter import *
@@ -58,7 +59,7 @@ class TransformerRWKV4ForLM(TransformerRWKV4LMHeadModel):
 
 
 class MyTransformer(TransformerRWKV4ForLM, ModelWeightMixin, with_pl=True):
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,**kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
         super(MyTransformer, self).__init__(*args, **kwargs)

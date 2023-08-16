@@ -2,6 +2,7 @@
 # @Time    : 2023/5/12 20:41
 # @Author  : tk
 # @FileName: llm_model
+from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.baichuan.modeling_baichuan import BaiChuanForCausalLM,TransformerBaiChuanLMHeadModel,BaiChuanConfig,setup_model_profile
 from ...weight.modelweighter import *
 from .tokenization_baichuan import BaiChuanTokenizer
@@ -49,16 +50,17 @@ class TransformerForLM(TransformerBaiChuanLMHeadModel):
 
 
 class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
-
-
         #可能扩充词表
         self.resize_token_embs(new_num_tokens)
+
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
 
 
         if lora_args is not None and lora_args.with_lora:

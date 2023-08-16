@@ -9,6 +9,7 @@ import re
 import warnings
 from typing import List, Tuple, Optional, Callable
 import torch
+from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig,setup_model_profile
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
@@ -283,7 +284,7 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 
 class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=True):
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraArguments = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
         super(MyTransformer, self).__init__(*args, **kwargs)
@@ -291,6 +292,9 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
 
         #可能添加新词
         self.resize_token_embs(new_num_tokens)
+
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
 
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
