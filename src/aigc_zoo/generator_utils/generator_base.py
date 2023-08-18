@@ -3,8 +3,7 @@
 # @Time    : 2023/8/18 12:27
 from typing import List, Tuple
 import torch
-from transformers import PreTrainedModel
-
+from transformers import PreTrainedModel, BatchEncoding
 
 
 class GeneratorBase:
@@ -28,7 +27,7 @@ class GeneratorBase:
             if inputs[k].size(-1) > length:
                 inputs[k] = inputs[k][:,:length]
         # inputs = inputs.to(self.model.device)
-        inputs = {k: v.to(self.model.device) for k, v in inputs.items() if torch.is_tensor(v)} if isinstance(inputs,dict) else inputs.to(self.model.device)
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items() if torch.is_tensor(v)} if isinstance(inputs,(dict,BatchEncoding)) else inputs.to(self.model.device)
         return inputs
 
     def post_process(self,outputs,prompt_length,output_scores=False):
@@ -62,7 +61,7 @@ class GeneratorBase:
         if output_scores:
             kwargs['return_dict_in_generate'] = True
         outputs = self.model.generate(**inputs, **kwargs)
-        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs, dict) else len(inputs[0])
+        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,(dict,BatchEncoding)) else len(inputs[0])
         response = self.post_process(outputs, prompt_length,output_scores)
         return response,history
 

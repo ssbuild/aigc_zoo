@@ -4,6 +4,7 @@
 from typing import List, Tuple
 
 import torch
+from transformers import BatchEncoding
 
 from .generator_base import GeneratorBase
 
@@ -37,7 +38,7 @@ class Generate(GeneratorBase):
         if output_scores:
             kwargs['return_dict_in_generate'] = True
         outputs = self.model.generate(**inputs,eos_token_id=eos_token_id, **kwargs)
-        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs, dict) else len(inputs[0])
+        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,(dict,BatchEncoding)) else len(inputs[0])
         response = self.post_process(outputs, prompt_length, output_scores)
         return response, history
 
