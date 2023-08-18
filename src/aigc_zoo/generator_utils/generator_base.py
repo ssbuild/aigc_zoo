@@ -13,7 +13,7 @@ class GeneratorBase:
         self.tokenizer = tokenizer
         self.config = kwargs.get('config',None) or self.model.config
         self.generation_config = kwargs.get('generation_config',None) or getattr(self.model,'generation_config',None)
-        self.model_max_length = kwargs.get('model_max_length',None) or self.config.get('model_max_length',None) or 65535
+        self.model_max_length = kwargs.get('model_max_length',None) or getattr(self.config,'model_max_length',None) or 65535
         self.kwargs = kwargs
 
 
