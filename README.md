@@ -19,6 +19,10 @@
 ```text
  pip uninstall aigc_zoo
  pip install -U git+https://github.com/ssbuild/aigc_zoo.git
+ 
+ 或者 
+ git clone https://github.com/ssbuild/aigc_zoo.git
+ pip install -e .
 ```
 
 
