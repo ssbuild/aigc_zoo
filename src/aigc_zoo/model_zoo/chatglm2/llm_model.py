@@ -15,6 +15,7 @@ from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
 from .tokenization_chatglm import ChatGLMTokenizer
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
@@ -73,15 +74,13 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
 
 
     @torch.no_grad()
-    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,
-             do_sample=True, top_p=0.8, temperature=0.8, logits_processor=None, **kwargs):
+    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,logits_processor=None, **kwargs):
         if history is None:
             history = []
         if logits_processor is None:
             logits_processor = LogitsProcessorList()
         logits_processor.append(InvalidScoreLogitsProcessor())
-        gen_kwargs = {"do_sample": do_sample, "top_p": top_p,
-                      "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        gen_kwargs = {"logits_processor": logits_processor, **kwargs}
 
         output_scores = gen_kwargs.get('output_scores', False)
         if output_scores:
@@ -102,17 +101,8 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
 
 
 class MyTransformerChatGlmLMHeadModel(TransformerBase):
+    @hf_decorator
     def __init__(self, *args,**kwargs):
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
         super(MyTransformerChatGlmLMHeadModel, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
 

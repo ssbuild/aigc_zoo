@@ -4,27 +4,17 @@
 # @FileName: llm_model
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.baichuan.modeling_baichuan import BaiChuanForCausalLM,TransformerBaiChuanLMHeadModel,BaiChuanConfig,setup_model_profile
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
-from .tokenization_baichuan import BaiChuanTokenizer
+from .tokenization_baichuan import BaiChuanTokenizer # noqa
 import logging
 logger = logging.getLogger(__name__)
 
 
 
 class TransformerForLM(TransformerBaiChuanLMHeadModel):
+    @hf_decorator
     def __init__(self, *args, **kwargs):
-        # 如果显卡支持int8 可以开启
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config",None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
-
         super(TransformerForLM, self).__init__(*args, **kwargs)
 
         # for param in self.model.parameters():

@@ -9,41 +9,19 @@ import re
 import warnings
 from typing import List, Tuple, Optional, Callable
 import torch
-from deep_training.nlp.layers.rope_scale.patch import *
-from deep_training.nlp.models.chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig,setup_model_profile
-from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
+from deep_training.nlp.layers.rope_scale.patch import *
+from deep_training.nlp.models.chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig,setup_model_profile # noqa
+from deep_training.nlp.models.transformer import TransformerBase
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
+
+from .generation_utils import build_masks_and_position_ids_glm
 from .tokenization_chatglm import ChatGLMTokenizer
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
-
-def build_masks_and_position_ids_glm(batch_input_ids, ctxlens, max_len = None):
-    if max_len is None:
-        max_len = batch_input_ids.size(1)
-
-    batch_position_ids, batch_attention_mask = [], []
-    for input_ids, context_length in zip(batch_input_ids, ctxlens):
-        if context_length.dim() == 1:
-            context_length = context_length.squeeze(dim=-1)
-
-        mask_position = context_length - 1
-        position_ids = list(range(context_length)) + [mask_position] * (max_len - context_length)
-        block_position_ids = [0] * context_length + list(range(1, max_len - context_length + 1))
-
-        attention_mask = torch.ones((1, max_len, max_len))
-        attention_mask = torch.tril(attention_mask)
-        attention_mask[..., :context_length] = 1
-        attention_mask = (attention_mask < 0.5)
-
-        batch_position_ids.append(torch.stack((torch.tensor(position_ids), torch.tensor(block_position_ids))))
-        batch_attention_mask.append(attention_mask)
-
-    batch_attention_mask = torch.stack(batch_attention_mask, dim=0)
-    batch_position_ids = torch.stack(batch_position_ids, dim=0)
-    return batch_attention_mask,batch_position_ids
 
 
 
@@ -59,14 +37,12 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         super(MyChatGLMForConditionalGeneration, self).__init__(config)
 
     @torch.no_grad()
-    def generate_for_continue_writing(self,tokenizer, query: str,
-        do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs
+    def generate_for_continue_writing(self,tokenizer, query: str, logits_processor=None, **kwargs
     ):
         if logits_processor is None:
             logits_processor = LogitsProcessorList()
         logits_processor.append(InvalidScoreLogitsProcessor())
-        gen_kwargs = {"do_sample": do_sample, "top_p": top_p,
-                      "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        gen_kwargs = {"logits_processor": logits_processor, **kwargs}
 
         output_scores = gen_kwargs.get('output_scores', False)
         if output_scores:
@@ -87,16 +63,15 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         response = tokenizer.decode(outputs)
         response = self.process_response(response)
         return response
+
     @torch.no_grad()
-    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,
-             do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs):
+    def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,logits_processor=None, **kwargs):
         if history is None:
             history = []
         if logits_processor is None:
             logits_processor = LogitsProcessorList()
         logits_processor.append(InvalidScoreLogitsProcessor())
-        gen_kwargs = {"do_sample": do_sample, "top_p": top_p,
-                      "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        gen_kwargs = {"logits_processor": logits_processor, **kwargs}
         output_scores = gen_kwargs.get('output_scores', False)
         if output_scores:
             gen_kwargs['return_dict_in_generate'] = True
@@ -121,15 +96,13 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
         return response, history
 
     @torch.no_grad()
-    def stream_chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None,
-                    do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs):
+    def stream_chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None, logits_processor=None, **kwargs):
         if history is None:
             history = []
         if logits_processor is None:
             logits_processor = LogitsProcessorList()
         logits_processor.append(InvalidScoreLogitsProcessor())
-        gen_kwargs = {"do_sample": do_sample, "top_p": top_p,
-                      "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+        gen_kwargs = {"logits_processor": logits_processor, **kwargs}
         if not history:
             prompt = query
         else:
@@ -249,17 +222,8 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
             yield input_ids
 
 class MyTransformerChatGlmLMHeadModel(TransformerBase):
+    @hf_decorator
     def __init__(self, *args,**kwargs):
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
         super(MyTransformerChatGlmLMHeadModel, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
 
@@ -292,7 +256,6 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
 
         #可能添加新词
         self.resize_token_embs(new_num_tokens)
-
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
 

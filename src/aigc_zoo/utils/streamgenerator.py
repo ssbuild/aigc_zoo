@@ -1,20 +1,27 @@
 # -*- coding: utf-8 -*-
 # @Author  : ssbuild
 # @Time    : 2023/7/26 10:29
+import typing
 from typing import Callable
 from transformers import TextStreamer
 
 
 class GenTextStreamer(TextStreamer):
-    def __init__(self,process_token_fn: Callable,fn_args, tokenizer,skip_word_list=None, skip_prompt: bool = False, **decode_kwargs):
+    def __init__(self,
+                 process_token_fn: Callable,
+                 fn_args,
+                 tokenizer,
+                 skip_word_list=None,
+                 skip_prompt: bool = False,
+                 on_filter_fn: typing.Optional[Callable]=None,
+                 **decode_kwargs):
         super().__init__(tokenizer,skip_prompt,**decode_kwargs)
         self.process_token_fn = process_token_fn
         self.fn_args = fn_args
-
+        self.on_filter_fn = on_filter_fn
         if skip_word_list is not None:
             skip_word_list = list(set(skip_word_list))
         self.skip_word_list = skip_word_list
-
         self.all_ids = []
 
 
@@ -29,12 +36,16 @@ class GenTextStreamer(TextStreamer):
             value = value[0]
 
         value_ids = value.tolist()
+        if self.on_filter_fn is not None and self.on_filter_fn(self,value_ids):
+            return
 
         if self.skip_prompt and self.next_tokens_are_prompt:
             self.next_tokens_are_prompt = False
             return
 
         if self.skip_word_list is not None:
+            if value_ids in self.skip_word_list:
+                return
             if isinstance(value_ids,list):
                 value_ids = [v for v in value_ids if v not in self.skip_word_list]
                 if len(value_ids) == 0:

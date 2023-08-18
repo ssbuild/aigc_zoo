@@ -3,24 +3,16 @@
 # @FileName: models
 
 from deep_training.nlp.models.transformer import TransformerForSeq2SeqLM
+
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 from transformers import T5ForConditionalGeneration
 import logging
 logger = logging.getLogger(__name__)
 
 class TransformerForLM(TransformerForSeq2SeqLM):
+    @hf_decorator
     def __init__(self, *args, **kwargs):
-        # 如果显卡支持int8 可以开启 ， 需安装依赖 pip install bitsandbytes
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
         super(TransformerForLM, self).__init__(*args, **kwargs)
 
 

@@ -21,6 +21,7 @@ from transformers.generation.utils import GenerateOutput
 from .qwen_generation_utils import HistoryType, make_context, get_stop_words_ids, decode_tokens, \
     StopWordsLogitsProcessor
 from .tokenization_qwen import QWenTokenizer
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
     def __init__(self,config):
         super(MyQWenLMHeadModel, self).__init__(config)
 
+    @torch.no_grad()
     def chat(
             self,
             tokenizer: PreTrainedTokenizer,
@@ -87,6 +89,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
 
         return response, history
 
+    @torch.no_grad()
     def chat_stream(
             self,
             tokenizer: PreTrainedTokenizer,
@@ -181,17 +184,8 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
         )
 
 class MyTransformerForQwen(TransformerBase):
+    @hf_decorator
     def __init__(self, *args,**kwargs):
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
         super(MyTransformerForQwen, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyQWenLMHeadModel, *args, **kwargs))
 

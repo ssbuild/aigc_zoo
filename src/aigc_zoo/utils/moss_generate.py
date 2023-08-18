@@ -18,7 +18,7 @@ def convert_tokens_to_string(self, tokens):
 
 MossTokenizer.convert_tokens_to_string = convert_tokens_to_string
 
-
+# 弃用
 class Generate:
     def __init__(self,model,
                  tokenizer,

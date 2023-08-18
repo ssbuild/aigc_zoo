@@ -6,26 +6,18 @@ from deep_training.nlp.rl.ilql.configuration import ILQLArguments, ILQLConfig
 from deep_training.nlp.rl.ilql.ilql_module import ILQLModelLoss
 from deep_training.nlp.models.rl.modeling_ilql import AutoModelForCausalLMWithILQLHeads
 from transformers import AdamW
+
+from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 import logging
 logger = logging.getLogger(__name__)
 
 class ILQLModelForCausalLMWithILQLHeads(AutoModelForCausalLMWithILQLHeads):
+    @hf_decorator
     def __init__(self, *args,hidden_size=None, up_sampling_score=False,**kwargs):
         config = kwargs.get('config')
         if hidden_size is None:
             hidden_size = config.word_embed_proj_dim if getattr(config, 'word_embed_proj_dim', None) else config.hidden_size
-        # 如果显卡支持int8 可以开启
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
         super(ILQLModelForCausalLMWithILQLHeads, self).__init__(*args,hidden_size=hidden_size,up_sampling_score=up_sampling_score, **kwargs)
 
     def enable_input_require_grads(self):

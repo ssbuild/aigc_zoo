@@ -2,6 +2,8 @@
 # @Author  : ssbuild
 # @Time    : 2023/5/29 13:34
 import torch
+
+from ...utils.transformer_utils import preproecss_hf_kwargs
 from ...weight.modelweighter import *
 from torch import nn
 from deep_training.nlp.models.transformer_base import TransformerBase
@@ -16,17 +18,7 @@ __all__ = [
 ]
 class MyTransformerChatGlmLMHeadModel(TransformerBase):
     def __init__(self, *args,**kwargs):
-        # 如果显卡支持int8 可以开启
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
+        preproecss_hf_kwargs(kwargs)
         super(MyTransformerChatGlmLMHeadModel, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
 
