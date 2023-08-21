@@ -56,12 +56,14 @@ class MyTransformer(TransformerRWKV4ForLM, ModelWeightMixin, with_pl=True):
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
-
         self.resize_token_embs(new_num_tokens)
+        self.inject_model()
 
+    def inject_model(self):
+        lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone, lora_args,auto_prepare_kbit_training=False)
+            model: LoraModel = LoraModel(self.backbone, lora_args, auto_prepare_kbit_training=False)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)

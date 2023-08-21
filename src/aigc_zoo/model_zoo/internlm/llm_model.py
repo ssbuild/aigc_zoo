@@ -52,7 +52,11 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
         self.resize_token_embs(new_num_tokens)
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
+        self.inject_model()
 
+
+    def inject_model(self):
+        lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: LoraModel = LoraModel(self.backbone, lora_args,auto_prepare_kbit_training=False)

@@ -222,13 +222,18 @@ class MyTransformer(MyTransformerForQwen,ModelWeightMixin, with_pl=True):
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
-
+        self.num_layers_freeze = num_layers_freeze
         #可能添加新词
         self.resize_token_embs(new_num_tokens)
 
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
+        self.inject_model()
 
+
+    def inject_model(self):
+        lora_args = self.lora_args
+        num_layers_freeze = self.num_layers_freeze
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model = LoraModel(self.backbone, lora_args)

@@ -139,9 +139,11 @@ class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=
         super(MyRewardTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = None
-
         self.resize_token_embs(new_num_tokens)
+        self.inject_model()
 
+    def inject_model(self):
+        lora_args = self.lora_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: LoraModel = LoraModel(self.backbone, lora_args, auto_prepare_kbit_training=False)
@@ -157,6 +159,7 @@ class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=
             #         if hasattr(module, 'weight'):
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
+
 
     def resize_token_embs(self, new_num_tokens):
         if new_num_tokens is not None:

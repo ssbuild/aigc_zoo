@@ -110,12 +110,17 @@ class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMixin, with_pl=True)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
+        self.num_layers_freeze = num_layers_freeze
 
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
         # 可能扩充词表
         self.resize_token_embs(new_num_tokens)
+        self.inject_model()
 
+    def inject_model(self):
+        lora_args,prompt_args = self.lora_args,self.prompt_args
+        num_layers_freeze = self.num_layers_freeze
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: LoraModel = LoraModel(self.backbone, lora_args, auto_prepare_kbit_training=False)
@@ -137,15 +142,15 @@ class MyTransformer(MyTransformerMossForCausalLM,ModelWeightMixin, with_pl=True)
             print('==' * 30, 'prompt info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
-        elif num_layers_freeze > 0 :  # 非 lora freeze
+        elif num_layers_freeze > 0:  # 非 lora freeze
             M: nn.Module = self.backbone
             for param in M.named_parameters():
-                result = re.match(re.compile('.*transformer.layers.(\\d+)'),param[0])
+                result = re.match(re.compile('.*transformer.layers.(\\d+)'), param[0])
                 if result is not None:
                     n_layer = int(result.group(1))
                     if n_layer < num_layers_freeze:
                         param[1].requires_grad = False
-                        print('freeze layer',param[0])
+                        print('freeze layer', param[0])
 
     def resize_token_embs(self, new_num_tokens):
         if new_num_tokens is not None:
