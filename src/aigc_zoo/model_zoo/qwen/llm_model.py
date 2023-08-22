@@ -236,10 +236,10 @@ class MyTransformer(MyTransformerForQwen,ModelWeightMixin, with_pl=True):
         num_layers_freeze = self.num_layers_freeze
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model = LoraModel(self.backbone, lora_args)
+            model = LoraModel(self.backbone.model, lora_args)
             print('==' * 30,'lora info')
             model.print_trainable_parameters()
-            self.set_model(model, copy_attr=False)
+            self.backbone.set_model(model, copy_attr=False)
 
             # for name, module in model.named_modules():
             #     if isinstance(module, LoraLayer):
