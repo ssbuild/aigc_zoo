@@ -134,7 +134,7 @@ class RewardTransformer(RewardT5Model,ModelWeightMixin, with_pl=True):
 
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone.model, lora_args, auto_prepare_kbit_training=False)
+            model: LoraModel = LoraModel(self.backbone.model, lora_args, auto_prepare_kbit_training=True)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.backbone.set_model(model, copy_attr=False)
