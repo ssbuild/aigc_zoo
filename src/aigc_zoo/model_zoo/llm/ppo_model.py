@@ -58,7 +58,7 @@ class MyPPOTransformer(PPOModelForCausalLMWithValueHead, PPOModelLoss,ModelWeigh
         lora_args = self.lora_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone, lora_args, auto_prepare_kbit_training=False)
+            model: PetlModel = PetlModel(self.backbone, lora_args, auto_prepare_kbit_training=True)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
@@ -107,7 +107,7 @@ class MyPPOTransformer(PPOModelForCausalLMWithValueHead, PPOModelLoss,ModelWeigh
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:
             # PromptModel 方法覆盖原来方法
-            return self.backbone
+            return self.backbone.model
         return self.backbone.model
 
     @torch.no_grad()

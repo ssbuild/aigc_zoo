@@ -249,7 +249,7 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
-        lora_args: LoraArguments = kwargs.pop('lora_args',None)
+        lora_args: EffiArguments = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
@@ -265,7 +265,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
         lora_args, prompt_args = self.lora_args, self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model = LoraModel(self.backbone, lora_args)
+            model = PetlModel(self.backbone, lora_args)
             print('==' * 30,'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
