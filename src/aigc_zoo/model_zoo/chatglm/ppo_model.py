@@ -45,10 +45,10 @@ class MyPPOTransformer(MyChatglmModelForCausalPrefixLMWithValueHead,PPOModelLoss
         lora_args = self.lora_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone.model, lora_args, auto_prepare_kbit_training=True)
+            model: PetlModel = PetlModel(self.backbone, lora_args, auto_prepare_kbit_training=True)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
-            self.backbone.set_model(model, copy_attr=False)
+            self.set_model(model, copy_attr=False)
             # for name, module in model.named_modules():
             #     if isinstance(module, LoraLayer):
             #         module = module.to(torch.bfloat16)

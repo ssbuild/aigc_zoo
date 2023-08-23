@@ -265,10 +265,10 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
         lora_args, prompt_args = self.lora_args, self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model = LoraModel(self.backbone.model, lora_args)
+            model = PetlModel(self.backbone, lora_args)
             print('==' * 30,'lora info')
             model.print_trainable_parameters()
-            self.backbone.set_model(model, copy_attr=False)
+            self.set_model(model, copy_attr=False)
             # for name, module in model.named_modules():
             #     if isinstance(module, LoraLayer):
             #         module = module.to(torch.bfloat16)

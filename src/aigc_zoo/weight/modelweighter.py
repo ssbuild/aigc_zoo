@@ -14,10 +14,11 @@ from deep_training.trainer.pl.modelweighter import *
 
 __all__ = [
     'ModelWeightMixin',
-    'ModelWeightMinMax',
-    'LoraModel',
-    'EffiArguments',
+    'PetlModel',
     'LoraConfig',
+    'AdaLoraConfig',
+    'IA3Config',
+    'PetlArguments',
     'AutoConfig',
     'PromptLearningConfig',
     'PromptModel',

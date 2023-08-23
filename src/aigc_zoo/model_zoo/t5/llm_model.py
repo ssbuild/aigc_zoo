@@ -39,10 +39,10 @@ class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
         lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: LoraModel = LoraModel(self.backbone.model, lora_args, auto_prepare_kbit_training=True)
+            model: PetlModel = PetlModel(self.backbone, lora_args, auto_prepare_kbit_training=True)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
-            self.backbone.set_model(model, copy_attr=False)
+            self.set_model(model, copy_attr=False)
             # for name, module in model.named_modules():
             #     if isinstance(module, LoraLayer):
             #         module = module.to(torch.bfloat16)
@@ -55,10 +55,10 @@ class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
 
         elif prompt_args is not None and prompt_args.with_prompt:
             self.backbone.enable_input_require_grads()
-            model: PromptModel = get_prompt_model(self.backbone.model, prompt_args)
+            model: PromptModel = get_prompt_model(self.backbone, prompt_args)
             print('==' * 30, 'prompt info')
             model.print_trainable_parameters()
-            self.backbone.set_model(model, copy_attr=False)
+            self.set_model(model, copy_attr=False)
 
     def resize_token_embs(self, new_num_tokens):
         if new_num_tokens is not None:
