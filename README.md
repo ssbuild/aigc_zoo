@@ -2,7 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
-    08-25 0.2.0.post1 support xverse chat
+    08-25 0.2.0.post0 support xverse chat
     08-23 0.2.0 release
     08-16 0.1.21 release add 5 kind rope scale method
     08-11 0.1.17.post0 update qwen config
