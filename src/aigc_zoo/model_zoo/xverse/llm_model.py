@@ -1,67 +1,73 @@
-# coding=utf8
-# @Time    : 2023/5/12 20:41
-# @Author  : tk
-# @FileName: llm_model
-import typing
-from typing import Optional, List,Union,Any
+# -*- coding: utf-8 -*-
+# @Author  : ssbuild
+# @Time    : 2023/8/25 14:56
+import re
+from deep_training.nlp.layers.rope_scale.patch import *
+from typing import List, Tuple, Optional,Any,Union
 import torch
-from deep_training.nlp.models.baichuan2.modeling_baichuan import BaichuanForCausalLM,TransformerBaichuanLMHeadModel,BaichuanConfig,setup_model_profile
-from deep_training.nlp.models.transformer_base import TransformerBase
+from torch import nn
+from deep_training.nlp.models.xverse.modeling_xverse import XverseForCausalLM,XverseConfig # noqa
+from deep_training.nlp.models.transformer import TransformerBase
 from transformers import GenerationConfig
-
-from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
-from .tokenization_baichuan import BaichuanTokenizer
+from ...utils.transformer_utils import hf_decorator
 import logging
 logger = logging.getLogger(__name__)
 
 
-class MyBaichuanForCausalLM(BaichuanForCausalLM):
-    def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int=0):
+class MyXverseForCausalLM(XverseForCausalLM):
+    def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int = 2048):
         max_new_tokens = max_new_tokens or self.generation_config.max_new_tokens
-        max_input_tokens = self.config.model_max_length - max_new_tokens
-        max_input_tokens = max(self.config.model_max_length // 2, max_input_tokens)
+        max_input_tokens = self.config.max_position_embeddings - max_new_tokens
+        max_input_tokens = max(self.config.max_position_embeddings // 2, max_input_tokens)
+
         total_input, round_input = [], []
-        user_token_id = getattr(self.generation_config,'user_token_id',None)
-        assistant_token_id = getattr(self.generation_config,'assistant_token_id',None)
+        user_prompt, assist_prompt = "Human: ", "Assistant: "
         for i, message in enumerate(messages[::-1]):
-            content_tokens = tokenizer.encode(message['content'])
             if message['role'] == 'user':
-                round_input = [user_token_id] + content_tokens + round_input if user_token_id is not None else content_tokens + round_input
-                if total_input and len(total_input) + len(round_input) > max_input_tokens:
-                    break
+                user_content = f"{user_prompt}{message['content']}\n\n"
+                if i == 0:
+                    user_content += assist_prompt
+                content_tokens = tokenizer.encode(user_content, return_token_type_ids=False)
+                round_input = content_tokens + round_input
+
+                if i != 0:
+                    if len(total_input) + len(round_input) > max_input_tokens:
+                        break
+                    else:
+                        total_input = round_input + total_input
                 else:
                     total_input = round_input + total_input
                     if len(total_input) >= max_input_tokens:
                         break
-                    else:
-                        round_input = []
+                round_input = []
             elif message['role'] == 'assistant':
-                round_input = [assistant_token_id] + content_tokens + round_input if assistant_token_id is not None else content_tokens + round_input
+                assist_content = f"{assist_prompt}{message['content']}"
+                content_tokens = tokenizer.encode(assist_content, return_token_type_ids=False)
+                round_input = content_tokens + [self.generation_config.eos_token_id] + round_input
             else:
                 raise ValueError(f"message role not supported yet: {message['role']}")
         total_input = total_input[-max_input_tokens:]  # truncate left
-        if assistant_token_id is not None:
-            total_input.append(assistant_token_id)
         total_input = torch.LongTensor([total_input]).to(self.device)
         return total_input
 
     @torch.no_grad()
     def chat(self, tokenizer, messages: List[dict], stream=False,
-             generation_config: Optional[GenerationConfig]=None):
+             generation_config: Optional[GenerationConfig] = None):
         generation_config = generation_config or self.generation_config
         input_ids = self._build_chat_input(tokenizer, messages, generation_config.max_new_tokens)
         if stream:
-            from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
-            self.__class__.generate = NewGenerationMixin.generate
-            self.__class__.sample_stream = NewGenerationMixin.sample_stream
-            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True)
+            from transformers import TextIteratorStreamer
+            from threading import Thread
+            streamer = TextIteratorStreamer(tokenizer, skip_prompt=True)
+            self.__class__.generate = PreTrainedModel.generate
 
             def stream_generator():
-                outputs = []
-                for token in self.generate(input_ids, generation_config=stream_config):
-                    outputs.append(token.item())
-                    yield tokenizer.decode(outputs, skip_special_tokens=True)
+                generation_kwargs = dict(inputs=input_ids, generation_config=generation_config, streamer=streamer)
+                thread = Thread(target=self.generate, kwargs=generation_kwargs)
+                thread.start()
+                for next_text in streamer:
+                    yield next_text.rstrip(tokenizer.eos_token)
 
             return stream_generator()
         else:
@@ -70,31 +76,10 @@ class MyBaichuanForCausalLM(BaichuanForCausalLM):
             response = tokenizer.decode(outputs[0][len(input_ids[0]):], skip_special_tokens=True)
             return response
 
-
-class TransformerBaichuanModel(TransformerBase):
+class TransformerForLM(TransformerBase):
     def __init__(self, *args,**kwargs):
-        super(TransformerBaichuanModel, self).__init__(*args,**kwargs)
-        self.set_model(self.from_pretrained(MyBaichuanForCausalLM, *args, **kwargs))
-
-
-class TransformerForLM(TransformerBaichuanModel):
-    @hf_decorator
-    def __init__(self, *args, **kwargs):
-        super(TransformerForLM, self).__init__(*args, **kwargs)
-
-        # for param in self.model.parameters():
-        #     param.requires_grad = False  # freeze the model - train adapters later
-        #     if param.ndim == 1:
-        #         # cast the small parameters (e.g. layernorm) to fp32 for stability
-        #         param.data = param.data.to(torch.float32)
-
-        # class CastOutputToFloat(nn.Sequential):
-        #     def forward(self, x):
-        #         return super().forward(x).to(torch.float32)
-        #
-        # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
-
-
+        super(TransformerForLM, self).__init__(*args,**kwargs)
+        self.set_model(self.from_pretrained(MyXverseForCausalLM, *args, **kwargs))
 
     def enable_input_require_grads(self):
         # setattr(self.model, 'model_parallel', True)
@@ -102,22 +87,24 @@ class TransformerForLM(TransformerBaichuanModel):
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
-
-
 class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
+
         #可能扩充词表
         self.resize_token_embs(new_num_tokens)
+
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
         self.inject_model()
 
 
     def inject_model(self):
-        lora_args, prompt_args = self.lora_args, self.prompt_args
+        lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,auto_prepare_kbit_training=True)
@@ -155,10 +142,13 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
                         config.task_specific_params = {}
                     config.task_specific_params['vocab_size'] = config.vocab_size
 
+
                 logger.info("resize the embedding size by the size of the tokenizer")
                 # print('before',self.config)
                 model.resize_token_embeddings(new_num_tokens)
                 # print('after',self.config)
+
+
 
     def get_model_lr(self, model=None, lr=None):
         # for n, p in self.named_parameters():
@@ -171,15 +161,10 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
         return super(MyTransformer, self).get_model_lr(model, lr)
 
 
-    def get_llm_model(self) -> Optional[Union[BaichuanForCausalLM,Any]]:
+    def get_llm_model(self) -> Optional[Union[MyXverseForCausalLM,Any]]:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:
             #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model
-
-
-
-
-
