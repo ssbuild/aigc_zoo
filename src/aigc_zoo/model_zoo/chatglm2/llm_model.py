@@ -135,7 +135,7 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=True):
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
-        lora_args: EffiArguments = kwargs.pop('lora_args',None)
+        lora_args: PetlArguments = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
