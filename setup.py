@@ -7,14 +7,14 @@ from setuptools import setup, find_packages
 
 install_requires = [
     # 'deep_training>=0.1.13,<=0.1.15',
-    'deep_training ~= 0.2.0',
+    'deep_training ~= 0.2.0.post0',
     'numpy_io>=0.0.8',
 ]
 
 if __name__ == '__main__':
     setup(
         name='aigc_zoo',
-        version='0.2.0',
+        version='0.2.0.post0',
         description='AIGC zoo',
         long_description='torch_training: https://github.com/ssbuild/aigc_zoo.git',
         license='Apache License 2.0',

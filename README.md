@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    08-25 0.2.0.post1 support xverse chat
     08-23 0.2.0 release
     08-16 0.1.21 release add 5 kind rope scale method
     08-11 0.1.17.post0 update qwen config
@@ -53,6 +54,7 @@ torch >= 2
 - [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
 - [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
 - [qwen_finetuning](https://github.com/ssbuild/qwen_finetuning)
+- [xverse_finetuning](https://github.com/ssbuild/xverse_finetuning)
 - [aigc_serving](https://github.com/ssbuild/aigc_serving)
 ## 
     纯粹而干净的代码
