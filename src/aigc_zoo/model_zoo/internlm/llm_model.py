@@ -2,8 +2,13 @@
 # @Time    : 2023/07/18 10:41
 # @Author  : tk
 # @FileName: llm_model
+from typing import List, Tuple, Optional
+
+import torch
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.internlm.modeling_internlm import InternLMForCausalLM,TransformerInternLMHeadModel,InternLMConfig,setup_model_profile
+from deep_training.nlp.models.transformer_base import TransformerBase
+from transformers.generation.streamers import BaseStreamer
 
 from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
@@ -12,11 +17,90 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class MyInternLMForCausalLM(InternLMForCausalLM):
+    def build_inputs(self, tokenizer, query: str, history: List[Tuple[str, str]] = []):
+        prompt = ""
+        for record in history:
+            prompt += f"""<s><|User|>:{record[0]}<eoh>\n<|Bot|>:{record[1]}<eoa>\n"""
+        if len(prompt) == 0:
+            prompt += "<s>"
+        prompt += f"""<|User|>:{query}<eoh>\n<|Bot|>:"""
+        return tokenizer([prompt], return_tensors="pt")
 
-class TransformerForLM(TransformerInternLMHeadModel):
-    @hf_decorator
-    def __init__(self, *args, **kwargs):
-        super(TransformerForLM, self).__init__(*args, **kwargs)
+    @torch.no_grad()
+    def chat(self,
+             tokenizer,
+             query: str,
+             history: List[Tuple[str, str]] = [],
+             streamer: Optional[BaseStreamer] = None,
+             max_new_tokens: int = 1024,
+             do_sample: bool = True,
+             temperature: float = 0.8,
+             top_p: float = 0.8,
+             eos_token_id=(2, 103028),
+             **kwargs):
+        inputs = self.build_inputs(tokenizer, query, history)
+        inputs = {k: v.to(self.device) for k, v in inputs.items() if torch.is_tensor(v)}
+        outputs = self.generate(**inputs,
+                                streamer=streamer,
+                                max_new_tokens=max_new_tokens,
+                                do_sample=do_sample,
+                                temperature=temperature,
+                                top_p=top_p,
+                                eos_token_id=list(eos_token_id),
+                                **kwargs)
+        outputs = outputs[0].cpu().tolist()[len(inputs["input_ids"][0]):]
+        response = tokenizer.decode(outputs, skip_special_tokens=True)
+        response = response.split("<eoa>")[0]
+        history = history + [(query, response)]
+        return response, history
+
+    @torch.no_grad()
+    def stream_chat(self,
+                    tokenizer,
+                    query: str,
+                    history: List[Tuple[str, str]] = [],
+                    max_new_tokens: int = 1024,
+                    do_sample: bool = True,
+                    temperature: float = 0.8,
+                    top_p: float = 0.8,
+                    eos_token_id=(2, 103028),
+                    **kwargs):
+        class ChatStreamer(BaseStreamer):
+            def __init__(self, tokenizer) -> None:
+                super().__init__()
+                self.tokenizer = tokenizer
+
+            def put(self, value):
+                if len(value.shape) > 1 and value.shape[0] > 1:
+                    raise ValueError("ChatStreamer only supports batch size 1")
+                elif len(value.shape) > 1:
+                    value = value[0]
+                token = self.tokenizer.decode([value[-1]], skip_special_tokens=True)
+                if token.strip() != "<eoa>":
+                    print(token, end="")
+
+            def end(self):
+                print("")
+
+        return self.chat(
+            tokenizer=tokenizer,
+            query=query,
+            streamer=ChatStreamer(tokenizer=tokenizer),
+            history=history,
+            max_new_tokens=max_new_tokens,
+            do_sample=do_sample,
+            temperature=temperature,
+            top_p=top_p,
+            eos_token_id=eos_token_id,
+            **kwargs
+        )
+
+
+class TransformerForLM(TransformerBase):
+    def __init__(self, *args,**kwargs):
+        super(TransformerForLM, self).__init__(*args,**kwargs)
+        self.set_model(self.from_pretrained(MyInternLMForCausalLM, *args, **kwargs))
 
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
@@ -29,7 +113,6 @@ class TransformerForLM(TransformerInternLMHeadModel):
         #         return super().forward(x).to(torch.float32)
         #
         # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
-
 
 
     def enable_input_require_grads(self):
@@ -110,7 +193,7 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
         return super(MyTransformer, self).get_model_lr(model, lr)
 
 
-    def get_llm_model(self) -> InternLMForCausalLM:
+    def get_llm_model(self) -> MyInternLMForCausalLM:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:

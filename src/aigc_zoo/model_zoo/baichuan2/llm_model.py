@@ -48,18 +48,18 @@ class MyBaichuanForCausalLM(BaichuanForCausalLM):
 
     @torch.no_grad()
     def chat(self, tokenizer, messages: List[dict], stream=False,
-             generation_config: Optional[GenerationConfig]=None):
+             generation_config: Optional[GenerationConfig]=None,**kwargs):
         generation_config = generation_config or self.generation_config
         input_ids = self._build_chat_input(tokenizer, messages, generation_config.max_new_tokens)
         if stream:
             from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
             self.__class__.generate = NewGenerationMixin.generate
             self.__class__.sample_stream = NewGenerationMixin.sample_stream
-            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True)
+            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True,**kwargs)
 
             def stream_generator():
                 outputs = []
-                for token in self.generate(input_ids, generation_config=stream_config):
+                for token in self.generate(input_ids, generation_config=stream_config,**kwargs):
                     outputs.append(token.item())
                     yield tokenizer.decode(outputs, skip_special_tokens=True)
 
