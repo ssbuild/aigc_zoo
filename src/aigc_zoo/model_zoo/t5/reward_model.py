@@ -16,7 +16,6 @@ __all__ = [
 ]
 
 class RewardT5Model(TransformerForSeq2SeqLM):
-    @hf_decorator
     def __init__(self, *args, **kwargs):
         super(RewardT5Model, self).__init__(*args, **kwargs)
         self.score = nn.Linear(self.config.hidden_size, self.config.num_labels)
@@ -125,6 +124,7 @@ class RewardT5Model(TransformerForSeq2SeqLM):
 
 
 class RewardTransformer(RewardT5Model,ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         super(RewardTransformer, self).__init__(*args, **kwargs)

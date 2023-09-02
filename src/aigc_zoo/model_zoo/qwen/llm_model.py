@@ -183,10 +183,9 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             **kwargs,
         )
 
-class MyTransformerForQwen(TransformerBase):
-    @hf_decorator
+class TransformerForLM(TransformerBase):
     def __init__(self, *args,**kwargs):
-        super(MyTransformerForQwen, self).__init__(*args,**kwargs)
+        super(TransformerForLM, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyQWenLMHeadModel, *args, **kwargs))
 
         # for param in self.model.parameters():
@@ -216,7 +215,8 @@ class MyTransformerForQwen(TransformerBase):
 
 
 
-class MyTransformer(MyTransformerForQwen,ModelWeightMixin, with_pl=True):
+class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)

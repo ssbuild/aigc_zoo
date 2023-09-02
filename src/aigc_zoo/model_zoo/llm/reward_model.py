@@ -12,7 +12,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class RewardModel(TransformerForCausalLM):
-    @hf_decorator
     def __init__(self, *args, **kwargs):
         super(RewardModel, self).__init__(*args, **kwargs)
 
@@ -127,6 +126,7 @@ class RewardModel(TransformerForCausalLM):
 
 
 class MyRewardTransformer(RewardModel, ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None,**kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

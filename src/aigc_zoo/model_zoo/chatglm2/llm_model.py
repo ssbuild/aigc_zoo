@@ -101,7 +101,6 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
 
 
 class MyTransformerChatGlmLMHeadModel(TransformerBase):
-    @hf_decorator
     def __init__(self, *args,**kwargs):
         super(MyTransformerChatGlmLMHeadModel, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
@@ -134,6 +133,7 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 
 class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: PetlArguments = kwargs.pop('lora_args',None)
         num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
