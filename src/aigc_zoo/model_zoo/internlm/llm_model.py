@@ -124,6 +124,7 @@ class TransformerForLM(TransformerBase):
 
 
 class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

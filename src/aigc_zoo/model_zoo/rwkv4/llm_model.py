@@ -16,10 +16,9 @@ from torch import nn
 logger = logging.getLogger(__name__)
 
 
-class TransformerRWKV4ForLM(TransformerRWKV4LMHeadModel):
-    @hf_decorator
+class TransformerForLM(TransformerRWKV4LMHeadModel):
     def __init__(self, *args, **kwargs):
-        super(TransformerRWKV4ForLM, self).__init__(*args, **kwargs)
+        super(TransformerForLM, self).__init__(*args, **kwargs)
 
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
@@ -49,7 +48,8 @@ class TransformerRWKV4ForLM(TransformerRWKV4LMHeadModel):
 
 
 
-class MyTransformer(TransformerRWKV4ForLM, ModelWeightMixin, with_pl=True):
+class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None,**kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)

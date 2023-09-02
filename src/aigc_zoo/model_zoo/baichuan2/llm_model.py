@@ -78,7 +78,6 @@ class TransformerBaichuanModel(TransformerBase):
 
 
 class TransformerForLM(TransformerBaichuanModel):
-    @hf_decorator
     def __init__(self, *args, **kwargs):
         super(TransformerForLM, self).__init__(*args, **kwargs)
 
@@ -105,6 +104,7 @@ class TransformerForLM(TransformerBaichuanModel):
 
 
 class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
