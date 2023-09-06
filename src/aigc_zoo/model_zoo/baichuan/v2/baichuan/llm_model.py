@@ -5,12 +5,12 @@
 import typing
 from typing import Optional, List,Union,Any
 import torch
-from deep_training.nlp.models.baichuan2.modeling_baichuan import BaichuanForCausalLM,TransformerBaichuanLMHeadModel,BaichuanConfig,setup_model_profile
+from deep_training.nlp.models.baichuan.v2.baichuan.modeling_baichuan import BaichuanForCausalLM,BaichuanConfig,setup_model_profile
 from deep_training.nlp.models.transformer_base import TransformerBase
 from transformers import GenerationConfig
 
-from ...utils.transformer_utils import hf_decorator
-from ...weight.modelweighter import *
+from .....utils.transformer_utils import hf_decorator
+from .....weight.modelweighter import *
 from .tokenization_baichuan import BaichuanTokenizer
 import logging
 logger = logging.getLogger(__name__)

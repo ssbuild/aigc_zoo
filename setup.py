@@ -14,7 +14,7 @@ install_requires = [
 if __name__ == '__main__':
     setup(
         name='aigc_zoo',
-        version='0.2.1',
+        version='0.2.1.rc0',
         description='AIGC zoo',
         long_description='torch_training: https://github.com/ssbuild/aigc_zoo.git',
         license='Apache License 2.0',
