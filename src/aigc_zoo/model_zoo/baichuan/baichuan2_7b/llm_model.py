@@ -5,46 +5,21 @@
 import typing
 from typing import Optional, List,Union,Any
 import torch
-from deep_training.nlp.models.baichuan.v1.baichuan2.modeling_baichuan import BaichuanForCausalLM,TransformerBaichuanLMHeadModel,BaichuanConfig,setup_model_profile
+from deep_training.nlp.models.baichuan2_7b.modeling_baichuan import BaichuanForCausalLM,BaichuanConfig,setup_model_profile
 from deep_training.nlp.models.transformer_base import TransformerBase
 from transformers import GenerationConfig
 
-from .....utils.transformer_utils import hf_decorator
-from .....weight.modelweighter import *
+from ....utils.transformer_utils import hf_decorator
+from ....weight.modelweighter import *
 from .tokenization_baichuan import BaichuanTokenizer
+from .generation_utils import build_chat_input
 import logging
 logger = logging.getLogger(__name__)
 
 
 class MyBaichuanForCausalLM(BaichuanForCausalLM):
     def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int=0):
-        max_new_tokens = max_new_tokens or self.generation_config.max_new_tokens
-        max_input_tokens = self.config.model_max_length - max_new_tokens
-        max_input_tokens = max(self.config.model_max_length // 2, max_input_tokens)
-        total_input, round_input = [], []
-        user_token_id = getattr(self.generation_config,'user_token_id',None)
-        assistant_token_id = getattr(self.generation_config,'assistant_token_id',None)
-        for i, message in enumerate(messages[::-1]):
-            content_tokens = tokenizer.encode(message['content'])
-            if message['role'] == 'user':
-                round_input = [user_token_id] + content_tokens + round_input if user_token_id is not None else content_tokens + round_input
-                if total_input and len(total_input) + len(round_input) > max_input_tokens:
-                    break
-                else:
-                    total_input = round_input + total_input
-                    if len(total_input) >= max_input_tokens:
-                        break
-                    else:
-                        round_input = []
-            elif message['role'] == 'assistant':
-                round_input = [assistant_token_id] + content_tokens + round_input if assistant_token_id is not None else content_tokens + round_input
-            else:
-                raise ValueError(f"message role not supported yet: {message['role']}")
-        total_input = total_input[-max_input_tokens:]  # truncate left
-        if assistant_token_id is not None:
-            total_input.append(assistant_token_id)
-        total_input = torch.LongTensor([total_input]).to(self.device)
-        return total_input
+        return build_chat_input(self,tokenizer,messages,max_new_tokens)
 
     @torch.no_grad()
     def chat(self, tokenizer, messages: List[dict], stream=False,
@@ -66,7 +41,7 @@ class MyBaichuanForCausalLM(BaichuanForCausalLM):
             return stream_generator()
         else:
             self.__class__.generate = PreTrainedModel.generate  # disable stream
-            outputs = self.generate(input_ids, generation_config=generation_config)
+            outputs = self.generate(input_ids, generation_config=generation_config,**kwargs)
             response = tokenizer.decode(outputs[0][len(input_ids[0]):], skip_special_tokens=True)
             return response
 
