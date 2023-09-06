@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    09-06 0.2.2 调整baichuan模块命名，支持百川v2
     09-03 0.2.1 fix llama2 
     08-25 0.2.0.post1 support xverse chat
     08-23 0.2.0 release
