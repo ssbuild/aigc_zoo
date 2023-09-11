@@ -151,6 +151,11 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
     def inject_model(self):
         lora_args = self.lora_args
         num_layers_freeze = self.num_layers_freeze
+
+        # ptv2
+        if (self.config.pre_seq_len or 0) > 0:
+            self.backbone.enable_input_require_grads()
+
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model = PetlModel(self.backbone, lora_args)
