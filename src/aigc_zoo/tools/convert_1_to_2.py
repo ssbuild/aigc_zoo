@@ -12,6 +12,6 @@ x = x["state_dict"]
 
 weights_dict_new = OrderedDict()
 for k,v in x.items():
-    weights_dict_new[re.sub(r'_TransformerLightningModule__backbone\.', 'transformer_base', k)] = v
+    weights_dict_new[re.sub('_TransformerLightningModule__backbone.', 'transformer_base.', k)] = v
 
 torch.save(weights_dict_new,"pytorch_model_new.bin")
