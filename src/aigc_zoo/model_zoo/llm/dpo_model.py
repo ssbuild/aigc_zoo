@@ -105,22 +105,44 @@ class TransformerDPOForLM(TransformerForCausalLM):
     def set_ref_model(self, ref_model):
         self.ref_model = ref_model
 
-    def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]) -> Tuple[
-        torch.FloatTensor, torch.FloatTensor]:
+    # def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]) -> Tuple[
+    #     torch.FloatTensor, torch.FloatTensor]:
+    #     """Run the given model on the given batch of inputs, concatenating the chosen and rejected inputs together.
+    #
+    #        We do this to avoid doing two forward passes, because it's faster for FSDP.
+    #     """
+    #     concatenated_batch = concatenated_inputs(batch)
+    #     all_logits = model(concatenated_batch['concatenated_input_ids'],
+    #                        attention_mask=concatenated_batch['concatenated_attention_mask']).logits.to(torch.float32)
+    #     all_logps = _get_batch_logps(all_logits, concatenated_batch['concatenated_labels'], average_log_prob=False)
+    #     chosen_logps = all_logps[:batch['chosen_input_ids'].shape[0]]
+    #     rejected_logps = all_logps[batch['chosen_input_ids'].shape[0]:]
+    #     return chosen_logps, rejected_logps
+
+    def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]) -> torch.FloatTensor:
         """Run the given model on the given batch of inputs, concatenating the chosen and rejected inputs together.
 
            We do this to avoid doing two forward passes, because it's faster for FSDP.
         """
-        concatenated_batch = concatenated_inputs(batch)
-        all_logits = model(concatenated_batch['concatenated_input_ids'],
-                           attention_mask=concatenated_batch['concatenated_attention_mask']).logits.to(torch.float32)
-        all_logps = _get_batch_logps(all_logits, concatenated_batch['concatenated_labels'], average_log_prob=False)
-        chosen_logps = all_logps[:batch['chosen_input_ids'].shape[0]]
-        rejected_logps = all_logps[batch['chosen_input_ids'].shape[0]:]
-        return chosen_logps, rejected_logps
+
+        all_logits = model(batch['input_ids2'],attention_mask=batch['attention_mask2']).logits.to(torch.float32)
+        all_logps = _get_batch_logps(all_logits, batch['labels'], average_log_prob=False)
+        return all_logps
+
 
     def compute_loss(self, *args, **batch) -> tuple:
-        chosen_logps, rejected_logps = self.forward_logits(model=self.backbone,batch=batch)
+        if self.training:
+            inputs = {}
+            inputs["input_ids"] = torch.cat((batch['input_ids'], batch['input_ids2']), dim=0)
+            inputs["attention_mask"] = torch.cat((batch['attention_mask'], batch['attention_mask2']), dim=0)
+            inputs["labels"] = torch.cat((batch['labels'],batch['labels2']),dim=0)
+        else:
+            inputs = batch
+        all_logps = self.forward_logits(model=self.backbone,batch=inputs)
+
+        chosen_logps = all_logps[:batch['input_ids'].shape[0]]
+        rejected_logps = all_logps[batch['input_ids'].shape[0]:]
+
         returns = tuple()
         if self.training:
             with torch.no_grad():
