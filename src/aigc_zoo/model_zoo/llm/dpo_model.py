@@ -2,6 +2,7 @@
 # @Time    : 2023/5/12 20:41
 # @Author  : tk
 # @FileName: llm_model
+import typing
 from typing import Dict, Tuple, Union, List
 import torch
 from deep_training.nlp.layers.rope_scale.patch import *
@@ -14,39 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def pad_to_length(tensor: torch.Tensor, length: int, pad_value: Union[int, float], dim: int = -1) -> torch.Tensor:
-    if tensor.size(dim) >= length:
-        return tensor
-    else:
-        pad_size = list(tensor.shape)
-        pad_size[dim] = length - tensor.size(dim)
-        return torch.cat([tensor, pad_value * torch.ones(*pad_size, dtype=tensor.dtype, device=tensor.device)], dim=dim)
 
-def concatenated_inputs(batch: Dict[str, Union[List, torch.LongTensor]]) -> Dict[str, torch.Tensor]:
-    """Concatenate the chosen and rejected inputs into a single tensor.
-
-    Args:
-        batch: A batch of data. Must contain the keys 'chosen_input_ids' and 'rejected_input_ids', which are tensors of shape (batch_size, sequence_length).
-
-    Returns:
-        A dictionary containing the concatenated inputs under the key 'concatenated_input_ids'.
-    """
-    max_length = max(batch['chosen_input_ids'].shape[1], batch['rejected_input_ids'].shape[1])
-    concatenated_batch = {}
-    for k in batch:
-        if k.startswith('chosen') and isinstance(batch[k], torch.Tensor):
-            pad_value = -100 if 'labels' in k else 0
-            concatenated_key = k.replace('chosen', 'concatenated')
-            concatenated_batch[concatenated_key] = pad_to_length(batch[k], max_length, pad_value=pad_value)
-    for k in batch:
-        if k.startswith('rejected') and isinstance(batch[k], torch.Tensor):
-            pad_value = -100 if 'labels' in k else 0
-            concatenated_key = k.replace('rejected', 'concatenated')
-            concatenated_batch[concatenated_key] = torch.cat((
-                concatenated_batch[concatenated_key],
-                pad_to_length(batch[k], max_length, pad_value=pad_value),
-            ), dim=0)
-    return concatenated_batch
 
 def _get_batch_logps(logits: torch.FloatTensor, labels: torch.Tensor, average_log_prob: bool = False) -> torch.FloatTensor:
     """Compute the log probabilities of the given labels under the given logits.
@@ -105,29 +74,18 @@ class TransformerDPOForLM(TransformerForCausalLM):
     def set_ref_model(self, ref_model):
         self.ref_model = ref_model
 
-    # def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]) -> Tuple[
-    #     torch.FloatTensor, torch.FloatTensor]:
-    #     """Run the given model on the given batch of inputs, concatenating the chosen and rejected inputs together.
-    #
-    #        We do this to avoid doing two forward passes, because it's faster for FSDP.
-    #     """
-    #     concatenated_batch = concatenated_inputs(batch)
-    #     all_logits = model(concatenated_batch['concatenated_input_ids'],
-    #                        attention_mask=concatenated_batch['concatenated_attention_mask']).logits.to(torch.float32)
-    #     all_logps = _get_batch_logps(all_logits, concatenated_batch['concatenated_labels'], average_log_prob=False)
-    #     chosen_logps = all_logps[:batch['chosen_input_ids'].shape[0]]
-    #     rejected_logps = all_logps[batch['chosen_input_ids'].shape[0]:]
-    #     return chosen_logps, rejected_logps
 
-    def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]) -> torch.FloatTensor:
+    def forward_logits(self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]],n) -> Tuple[torch.FloatTensor,torch.FloatTensor]:
         """Run the given model on the given batch of inputs, concatenating the chosen and rejected inputs together.
 
            We do this to avoid doing two forward passes, because it's faster for FSDP.
         """
-
-        all_logits = model(batch['input_ids2'],attention_mask=batch['attention_mask2']).logits.to(torch.float32)
+        outputs = model(batch['input_ids'],attention_mask=batch['attention_mask'],return_dict=True)
+        all_logits = outputs.logits.to(torch.float32)
         all_logps = _get_batch_logps(all_logits, batch['labels'], average_log_prob=False)
-        return all_logps
+        chosen_logps = all_logps[:n]
+        rejected_logps = all_logps[n:]
+        return chosen_logps,rejected_logps
 
 
     def compute_loss(self, *args, **batch) -> tuple:
@@ -138,18 +96,23 @@ class TransformerDPOForLM(TransformerForCausalLM):
             inputs["labels"] = torch.cat((batch['labels'],batch['labels2']),dim=0)
         else:
             inputs = batch
-        all_logps = self.forward_logits(model=self.model,batch=inputs)
-
-        chosen_logps = all_logps[:batch['input_ids'].shape[0]]
-        rejected_logps = all_logps[batch['input_ids'].shape[0]:]
-
+        n = batch['input_ids'].shape[0]
+        chosen_logps,rejected_logps = self.forward_logits(model=self,batch=inputs,n=n)
         returns = tuple()
         if self.training:
             with torch.no_grad():
-                ref_chosen_logps, ref_rejected_logps = self.forward_logits(model=self.ref_model.backbone.model,batch=batch)
-            loss = dpo_loss(chosen_logps, rejected_logps,ref_chosen_logps, ref_rejected_logps,beta=self.beta,reference_free=self.ref_free)
-            returns += ({"loss":loss},)
-        returns += (chosen_logps, rejected_logps)
+                ref_chosen_logps, ref_rejected_logps = self.forward_logits(model=self.ref_model.backbone.model,batch=inputs,n=n)
+            losses, chosen_rewards, rejected_rewards = dpo_loss(chosen_logps, rejected_logps,ref_chosen_logps, ref_rejected_logps,beta=self.beta,reference_free=self.ref_free)
+            reward_accuracies = (chosen_rewards > rejected_rewards).float()
+            loss_dict = {
+                "loss": losses.mean(),
+                "chosen_rewards": chosen_rewards.mean(),
+                "rejected_rewards": rejected_rewards.mean(),
+                "reward_accuracies": reward_accuracies.mean(),
+            }
+            returns += (loss_dict,chosen_rewards, rejected_rewards)
+        else:
+            returns += (chosen_logps, rejected_logps)
         return returns
 
 
