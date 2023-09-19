@@ -15,7 +15,7 @@ if __name__ == '__main__':
     setup(
         name='aigc_zoo',
         version='0.2.3.rc0',
-        description='AIGC zoo',
+        description='aigc zoo',
         long_description='torch_training: https://github.com/ssbuild/aigc_zoo.git',
         license='Apache License 2.0',
         url='https://github.com/ssbuild/aigc_zoo',

@@ -1,7 +1,7 @@
-# coding=utf8
-# @Time    : 2023/5/12 20:41
-# @Author  : tk
-# @FileName: llm_model
+# -*- coding: utf-8 -*-
+# @Author  : ssbuild
+# @Time    : 2023/9/19 16:52
+
 import typing
 from typing import Optional, List,Union,Any
 import torch
@@ -18,39 +18,17 @@ logger = logging.getLogger(__name__)
 
 
 class MyBaichuanForCausalLM(BaichuanForCausalLM):
-    def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int=0):
-        return build_chat_input(self,tokenizer,messages,max_new_tokens)
-
-    @torch.no_grad()
-    def chat(self, tokenizer, messages: List[dict], stream=False,
-             generation_config: Optional[GenerationConfig]=None,**kwargs):
-        generation_config = generation_config or self.generation_config
-        input_ids = self._build_chat_input(tokenizer, messages, generation_config.max_new_tokens)
-        if stream:
-            from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
-            self.__class__.generate = NewGenerationMixin.generate
-            self.__class__.sample_stream = NewGenerationMixin.sample_stream
-            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True,**kwargs)
-
-            def stream_generator():
-                outputs = []
-                for token in self.generate(input_ids, generation_config=stream_config,**kwargs):
-                    outputs.append(token.item())
-                    yield tokenizer.decode(outputs, skip_special_tokens=True)
-
-            return stream_generator()
-        else:
-            self.__class__.generate = PreTrainedModel.generate  # disable stream
-            outputs = self.generate(input_ids, generation_config=generation_config,**kwargs)
-            response = tokenizer.decode(outputs[0][len(input_ids[0]):], skip_special_tokens=True)
-            return response
+    ...
 
 
-
-class TransformerForLM(TransformerBase):
-    def __init__(self, *args, **kwargs):
-        super(TransformerForLM, self).__init__(*args, **kwargs)
+class TransformerForLM(DpoModule,TransformerBase):
+    def __init__(self, *args,ref_model=None,beta=0.1,ref_free=False,**kwargs):
+        super(TransformerForLM, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyBaichuanForCausalLM, *args, **kwargs))
+        self.beta = beta
+        self.ref_free = ref_free
+        self.ref_model = ref_model
+
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
         #     if param.ndim == 1:
@@ -62,6 +40,8 @@ class TransformerForLM(TransformerBase):
         #         return super().forward(x).to(torch.float32)
         #
         # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
+
+
 
 
 
@@ -148,8 +128,4 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
             #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model
-
-
-
-
 

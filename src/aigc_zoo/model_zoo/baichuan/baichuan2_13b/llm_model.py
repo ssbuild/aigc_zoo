@@ -46,16 +46,10 @@ class MyBaichuanForCausalLM(BaichuanForCausalLM):
             return response
 
 
-class TransformerBaichuanModel(TransformerBase):
+class TransformerForLM(TransformerBase):
     def __init__(self, *args,**kwargs):
-        super(TransformerBaichuanModel, self).__init__(*args,**kwargs)
+        super(TransformerForLM, self).__init__(*args,**kwargs)
         self.set_model(self.from_pretrained(MyBaichuanForCausalLM, *args, **kwargs))
-
-
-class TransformerForLM(TransformerBaichuanModel):
-    def __init__(self, *args, **kwargs):
-        super(TransformerForLM, self).__init__(*args, **kwargs)
-
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
         #     if param.ndim == 1:
@@ -67,7 +61,6 @@ class TransformerForLM(TransformerBaichuanModel):
         #         return super().forward(x).to(torch.float32)
         #
         # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
-
 
 
     def enable_input_require_grads(self):
