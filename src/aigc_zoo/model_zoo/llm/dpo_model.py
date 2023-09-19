@@ -138,7 +138,7 @@ class TransformerDPOForLM(TransformerForCausalLM):
             inputs["labels"] = torch.cat((batch['labels'],batch['labels2']),dim=0)
         else:
             inputs = batch
-        all_logps = self.forward_logits(model=self.backbone,batch=inputs)
+        all_logps = self.forward_logits(model=self.model,batch=inputs)
 
         chosen_logps = all_logps[:batch['input_ids'].shape[0]]
         rejected_logps = all_logps[batch['input_ids'].shape[0]:]
@@ -146,7 +146,7 @@ class TransformerDPOForLM(TransformerForCausalLM):
         returns = tuple()
         if self.training:
             with torch.no_grad():
-                ref_chosen_logps, ref_rejected_logps = self.forward_logits(model=self.ref_model,batch=batch)
+                ref_chosen_logps, ref_rejected_logps = self.forward_logits(model=self.ref_model.backbone.model,batch=batch)
             loss = dpo_loss(chosen_logps, rejected_logps,ref_chosen_logps, ref_rejected_logps,beta=self.beta,reference_free=self.ref_free)
             returns += ({"loss":loss},)
         returns += (chosen_logps, rejected_logps)
