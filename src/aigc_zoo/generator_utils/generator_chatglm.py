@@ -4,11 +4,11 @@
 from typing import List, Tuple
 import torch
 from transformers import LogitsProcessorList
-from build.lib.aigc_zoo.model_zoo.chatglm.llm_model import InvalidScoreLogitsProcessor
+from aigc_zoo.model_zoo.chatglm.llm_model import InvalidScoreLogitsProcessor
 from .generator_base import GeneratorBase
 
 class Generate(GeneratorBase):
-    def preprocess_inputs(self,query,history = None):
+    def preprocess_inputs(self,query,history = None,**kwargs):
         if history is None:
             history = []
         if not history:

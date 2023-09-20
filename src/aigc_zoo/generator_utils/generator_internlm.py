@@ -10,7 +10,7 @@ from .generator_base import GeneratorBase
 
 class Generate(GeneratorBase):
 
-    def preprocess_inputs(self, query: str, history=None):
+    def preprocess_inputs(self, query: str, history=None,**kwargs):
         if history is None:
             history = []
         prompt = ""
