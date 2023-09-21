@@ -11,7 +11,7 @@ from ..model_zoo.chatglm2.llm_model import InvalidScoreLogitsProcessor
 
 
 class Generate(GeneratorBase):
-    def preprocess_inputs(self,query,history = None):
+    def preprocess_inputs(self,query,history = None,**kwargs):
         if history is None:
             history = []
         prompt = ""

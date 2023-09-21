@@ -1,67 +1,30 @@
-# coding=utf8
-# @Time    : 2023/5/12 20:41
-# @Author  : tk
-# @FileName: llm_model
-import typing
-from typing import Optional, List,Union,Any
+# -*- coding: utf-8 -*-
+# @Author  : ssbuild
+# @Time    : 2023/9/19 14:53
+import re
+from deep_training.nlp.layers.rope_scale.patch import *
+from typing import List, Tuple, Optional,Any,Union
 import torch
-from deep_training.nlp.models.baichuan2_13b.modeling_baichuan import BaichuanForCausalLM,BaichuanConfig,setup_model_profile
-from deep_training.nlp.models.transformer_base import TransformerBase
+from torch import nn
+from deep_training.nlp.models.xverse.modeling_xverse import XverseForCausalLM,XverseConfig # noqa
+from deep_training.nlp.models.transformer import TransformerBase
 from transformers import GenerationConfig
-
-from ....utils.transformer_utils import hf_decorator
-from ....weight.modelweighter import *
-from .tokenization_baichuan import BaichuanTokenizer
-from .generation_utils import build_chat_input
+from ...utils.dpo_utils import DpoModule
+from ...weight.modelweighter import *
+from ...utils.transformer_utils import hf_decorator
 import logging
 logger = logging.getLogger(__name__)
 
 
-class MyBaichuanForCausalLM(BaichuanForCausalLM):
-    def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int=0):
-        return build_chat_input(self,tokenizer,messages,max_new_tokens)
+class MyXverseForCausalLM(XverseForCausalLM):...
 
-    @torch.no_grad()
-    def chat(self, tokenizer, messages: List[dict], stream=False,
-             generation_config: Optional[GenerationConfig]=None,**kwargs):
-        generation_config = generation_config or self.generation_config
-        input_ids = self._build_chat_input(tokenizer, messages, generation_config.max_new_tokens)
-        if stream:
-            from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
-            self.__class__.generate = NewGenerationMixin.generate
-            self.__class__.sample_stream = NewGenerationMixin.sample_stream
-            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True,**kwargs)
-
-            def stream_generator():
-                outputs = []
-                for token in self.generate(input_ids, generation_config=stream_config,**kwargs):
-                    outputs.append(token.item())
-                    yield tokenizer.decode(outputs, skip_special_tokens=True)
-
-            return stream_generator()
-        else:
-            self.__class__.generate = PreTrainedModel.generate  # disable stream
-            outputs = self.generate(input_ids, generation_config=generation_config,**kwargs)
-            response = tokenizer.decode(outputs[0][len(input_ids[0]):], skip_special_tokens=True)
-            return response
-
-
-class TransformerForLM(TransformerBase):
-    def __init__(self, *args,**kwargs):
-        super(TransformerForLM, self).__init__(*args,**kwargs)
-        self.set_model(self.from_pretrained(MyBaichuanForCausalLM, *args, **kwargs))
-        # for param in self.model.parameters():
-        #     param.requires_grad = False  # freeze the model - train adapters later
-        #     if param.ndim == 1:
-        #         # cast the small parameters (e.g. layernorm) to fp32 for stability
-        #         param.data = param.data.to(torch.float32)
-
-        # class CastOutputToFloat(nn.Sequential):
-        #     def forward(self, x):
-        #         return super().forward(x).to(torch.float32)
-        #
-        # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
-
+class TransformerDPOForLM(DpoModule,TransformerBase):
+    def __init__(self, *args,ref_model=None,beta=0.1,ref_free=False,**kwargs):
+        super(TransformerDPOForLM, self).__init__(*args,**kwargs)
+        self.set_model(self.from_pretrained(MyXverseForCausalLM, *args, **kwargs))
+        self.beta = beta
+        self.ref_free = ref_free
+        self.ref_model = ref_model
 
     def enable_input_require_grads(self):
         # setattr(self.model, 'model_parallel', True)
@@ -69,23 +32,25 @@ class TransformerForLM(TransformerBase):
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
-
-
-class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+class TransformerDPO(TransformerDPOForLM, ModelWeightMixin, with_pl=True):
     @hf_decorator
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
-        super(MyTransformer, self).__init__(*args, **kwargs)
+        super(TransformerDPO, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
+
         #可能扩充词表
         self.resize_token_embs(new_num_tokens)
+
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
         self.inject_model()
 
 
     def inject_model(self):
-        lora_args, prompt_args = self.lora_args, self.prompt_args
+        lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,auto_prepare_kbit_training=True)
@@ -123,10 +88,13 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
                         config.task_specific_params = {}
                     config.task_specific_params['vocab_size'] = config.vocab_size
 
+
                 logger.info("resize the embedding size by the size of the tokenizer")
                 # print('before',self.config)
                 model.resize_token_embeddings(new_num_tokens)
                 # print('after',self.config)
+
+
 
     def get_model_lr(self, model=None, lr=None):
         # for n, p in self.named_parameters():
@@ -136,18 +104,13 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
             return [(self.backbone, lr)]
         elif self.prompt_args and self.prompt_args.with_prompt:
             return [(self.backbone, lr)]
-        return super(MyTransformer, self).get_model_lr(model, lr)
+        return super(TransformerDPO, self).get_model_lr(model, lr)
 
 
-    def get_llm_model(self) -> Optional[Union[BaichuanForCausalLM,Any]]:
+    def get_llm_model(self) -> Optional[Union[MyXverseForCausalLM,Any]]:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:
             #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model
-
-
-
-
-

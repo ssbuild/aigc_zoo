@@ -9,11 +9,8 @@ from .generator_base import GeneratorBase
 
 class Generate(GeneratorBase):
 
-    def preprocess_inputs(self,query: str,
-                     history: List[Tuple[str, str]] = None,
-                     meta_instruction=None,
-                     plugin_instruction=None,
-                     ):
+    def preprocess_inputs(self,query: str,history: List[Tuple[str, str]] = None,
+                          meta_instruction=None,plugin_instruction=None,**kwargs):
         if history is None:
             history = []
         prompt = meta_instruction or self.model.get_meta_instruction()

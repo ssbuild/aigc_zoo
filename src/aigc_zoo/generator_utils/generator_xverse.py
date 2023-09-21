@@ -5,7 +5,7 @@
 from .generator_base import GeneratorBase
 
 class Generate(GeneratorBase):
-    def preprocess_inputs(self,query,history = None):
+    def preprocess_inputs(self,query,history = None,**kwargs):
         if history is None:
             history = []
         if not history:

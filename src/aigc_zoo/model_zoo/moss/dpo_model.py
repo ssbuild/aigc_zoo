@@ -1,55 +1,35 @@
-# coding=utf8
-# @Time    : 2023/5/12 20:41
-# @Author  : tk
-# @FileName: llm_model
-import typing
-from typing import Optional, List,Union,Any
-import torch
-from deep_training.nlp.models.baichuan2_13b.modeling_baichuan import BaichuanForCausalLM,BaichuanConfig,setup_model_profile
-from deep_training.nlp.models.transformer_base import TransformerBase
-from transformers import GenerationConfig
+# -*- coding: utf-8 -*-
+# @Author  : ssbuild
+# @Time    : 2023/9/19 14:47
 
-from ....utils.transformer_utils import hf_decorator
-from ....weight.modelweighter import *
-from .tokenization_baichuan import BaichuanTokenizer
-from .generation_utils import build_chat_input
+import re
+from deep_training.nlp.layers.rope_scale.patch import *
+from typing import List, Tuple
+import torch
+from torch import nn
+from deep_training.nlp.models.moss import MossForCausalLM,MossConfig # noqa
+from deep_training.nlp.models.moss.tokenization_moss import MossTokenizer # noqa
+from deep_training.nlp.models.transformer import TransformerBase
+
+from ...utils.dpo_utils import DpoModule
+from ...weight.modelweighter import *
+from ...utils.transformer_utils import hf_decorator
 import logging
 logger = logging.getLogger(__name__)
 
-
-class MyBaichuanForCausalLM(BaichuanForCausalLM):
-    def _build_chat_input(self, tokenizer, messages: List[dict], max_new_tokens: int=0):
-        return build_chat_input(self,tokenizer,messages,max_new_tokens)
-
-    @torch.no_grad()
-    def chat(self, tokenizer, messages: List[dict], stream=False,
-             generation_config: Optional[GenerationConfig]=None,**kwargs):
-        generation_config = generation_config or self.generation_config
-        input_ids = self._build_chat_input(tokenizer, messages, generation_config.max_new_tokens)
-        if stream:
-            from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
-            self.__class__.generate = NewGenerationMixin.generate
-            self.__class__.sample_stream = NewGenerationMixin.sample_stream
-            stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True,**kwargs)
-
-            def stream_generator():
-                outputs = []
-                for token in self.generate(input_ids, generation_config=stream_config,**kwargs):
-                    outputs.append(token.item())
-                    yield tokenizer.decode(outputs, skip_special_tokens=True)
-
-            return stream_generator()
-        else:
-            self.__class__.generate = PreTrainedModel.generate  # disable stream
-            outputs = self.generate(input_ids, generation_config=generation_config,**kwargs)
-            response = tokenizer.decode(outputs[0][len(input_ids[0]):], skip_special_tokens=True)
-            return response
+class MyMossForCausalLM(MossForCausalLM):
+    def __init__(self,config):
+        super(MyMossForCausalLM, self).__init__(config)
+        # self.transformer.gradient_checkpointing = True
 
 
-class TransformerForLM(TransformerBase):
-    def __init__(self, *args,**kwargs):
-        super(TransformerForLM, self).__init__(*args,**kwargs)
-        self.set_model(self.from_pretrained(MyBaichuanForCausalLM, *args, **kwargs))
+class TransformerDPOForLM(DpoModule,TransformerBase):
+    def __init__(self, *args,ref_model=None,beta=0.1,ref_free=False, **kwargs):
+        super(TransformerDPOForLM, self).__init__(*args,**kwargs)
+        self.set_model(self.from_pretrained(MyMossForCausalLM, *args, **kwargs))
+        self.beta = beta
+        self.ref_free = ref_free
+        self.ref_model = ref_model
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
         #     if param.ndim == 1:
@@ -62,33 +42,38 @@ class TransformerForLM(TransformerBase):
         #
         # self.model.lm_head = CastOutputToFloat(self.model.lm_head)
 
-
     def enable_input_require_grads(self):
-        # setattr(self.model, 'model_parallel', True)
-        # setattr(self.model, 'is_parallelizable', True)
+        setattr(self.model, 'model_parallel', True)
+        setattr(self.model, 'is_parallelizable', True)
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
 
 
-class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
+
+class TransformerDPO(TransformerDPOForLM,ModelWeightMixin, with_pl=True):
     @hf_decorator
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
-        lora_args: LoraConfig = kwargs.pop('lora_args', None)
+    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
+        lora_args: LoraConfig = kwargs.pop('lora_args',None)
         prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
-        super(MyTransformer, self).__init__(*args, **kwargs)
+        num_layers_freeze = kwargs.pop('num_layers_freeze', -1)
+        super(TransformerDPO, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
-        #可能扩充词表
+        self.num_layers_freeze = num_layers_freeze
+
+        self.rope_args = rope_args
+        inject_rope_scale_layer(self.backbone, rope_args)
+        # 可能扩充词表
         self.resize_token_embs(new_num_tokens)
         self.inject_model()
 
-
     def inject_model(self):
-        lora_args, prompt_args = self.lora_args, self.prompt_args
+        lora_args,prompt_args = self.lora_args,self.prompt_args
+        num_layers_freeze = self.num_layers_freeze
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: PetlModel = PetlModel(self.backbone, lora_args,auto_prepare_kbit_training=True)
+            model: PetlModel = PetlModel(self.backbone, lora_args, auto_prepare_kbit_training=True)
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
@@ -101,15 +86,23 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
             #         if hasattr(module, 'weight'):
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
-
         elif prompt_args is not None and prompt_args.with_prompt:
             self.backbone.enable_input_require_grads()
             model: PromptModel = get_prompt_model(self.backbone, prompt_args)
             print('==' * 30, 'prompt info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
+        elif num_layers_freeze > 0:  # 非 lora freeze
+            M: nn.Module = self.backbone
+            for param in M.named_parameters():
+                result = re.match(re.compile('.*transformer.layers.(\\d+)'), param[0])
+                if result is not None:
+                    n_layer = int(result.group(1))
+                    if n_layer < num_layers_freeze:
+                        param[1].requires_grad = False
+                        print('freeze layer', param[0])
 
-    def resize_token_embs(self,new_num_tokens):
+    def resize_token_embs(self, new_num_tokens):
         if new_num_tokens is not None:
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
@@ -136,18 +129,12 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
             return [(self.backbone, lr)]
         elif self.prompt_args and self.prompt_args.with_prompt:
             return [(self.backbone, lr)]
-        return super(MyTransformer, self).get_model_lr(model, lr)
+        return super(TransformerDPO, self).get_model_lr(model, lr)
 
-
-    def get_llm_model(self) -> Optional[Union[BaichuanForCausalLM,Any]]:
+    def get_llm_model(self) -> MyMossForCausalLM:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         elif self.prompt_args is not None and self.prompt_args.with_prompt:
-            #PromptModel 方法覆盖原来方法
-            return self.backbone
+            # PromptModel 方法覆盖原来方法
+            return self.backbone.model
         return self.backbone.model
-
-
-
-
-

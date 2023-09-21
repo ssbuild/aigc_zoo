@@ -4,7 +4,7 @@
 
 from typing import List, Tuple
 import torch
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel,PreTrainedTokenizer
 
 class Generate:
     @classmethod
@@ -38,7 +38,7 @@ class Generate:
 
     @classmethod
     @torch.no_grad()
-    def chat(cls, model: PreTrainedModel, tokenizer, query: str, history: List[Tuple[str, str]] = None,  **kwargs):
+    def chat(cls, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, query: str, history: List[Tuple[str, str]] = None,  **kwargs):
         prompt,history = Generate.build_inputs(query,history)
         output_scores = kwargs.get('output_scores', False)
         if output_scores:
@@ -50,6 +50,6 @@ class Generate:
             score = outputs.scores[0]
             return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
-        response = tokenizer.decode(outputs)
+        response = tokenizer.decode(outputs,skip_special_tokens=True)
         history = history + [(query, response)]
         return response, history
