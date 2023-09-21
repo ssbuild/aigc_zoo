@@ -21,7 +21,7 @@ class Generate:
         return prompt,history
     @classmethod
     @torch.no_grad()
-    def generate(cls,model: PreTrainedModel, tokenizer, query: str, **kwargs):
+    def generate(cls,model: PreTrainedModel, tokenizer: PreTrainedTokenizer, query: str, **kwargs):
         output_scores = kwargs.get('output_scores', False)
         if output_scores:
             kwargs['return_dict_in_generate'] = True
@@ -33,7 +33,7 @@ class Generate:
             score = outputs.scores[0]
             return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
-        response = tokenizer.decode(outputs)
+        response = tokenizer.decode(outputs,skip_special_tokens=True)
         return response
 
     @classmethod

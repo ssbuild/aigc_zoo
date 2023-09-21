@@ -36,7 +36,7 @@ class Generate:
             score = outputs.scores[0]
             return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
-        response = tokenizer.decode(outputs)
+        response = tokenizer.decode(outputs,skip_special_tokens=True)
         return response
 
     @classmethod
@@ -54,6 +54,6 @@ class Generate:
             score = outputs.scores[0]
             return score
         outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
-        response = tokenizer.decode(outputs)
+        response = tokenizer.decode(outputs,skip_special_tokens=True)
         history = history + [(query, response)]
         return response, history
