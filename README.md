@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    09-22 0.2.3 support auto finetuning and dpo finetuning
     09-06 0.2.2 调整baichuan模块命名，支持百川v2
     09-03 0.2.1 fix llama2 
     08-25 0.2.0.post1 support xverse chat
@@ -53,10 +54,10 @@ torch >= 2
 - [t5_rlhf](https://github.com/ssbuild/t5_rlhf)
 - [rwkv_finetuning](https://github.com/ssbuild/rwkv_finetuning)
 - [baichuan_finetuning](https://github.com/ssbuild/baichuan_finetuning)
-- [baichuan2_finetuning](https://github.com/ssbuild/baichuan2_finetuning)
 - [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
 - [qwen_finetuning](https://github.com/ssbuild/qwen_finetuning)
 - [xverse_finetuning](https://github.com/ssbuild/xverse_finetuning)
+- [auto_finetuning](https://github.com/ssbuild/auto_finetuning)
 - [aigc_serving](https://github.com/ssbuild/aigc_serving)
 ## 
     纯粹而干净的代码
