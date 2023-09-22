@@ -6,6 +6,7 @@ import torch
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.rwkv4.modeling_rwkv import TransformerRWKV4LMHeadModel, RwkvConfig, set_model_profile, \
     RwkvForCausalLM
+from deep_training.nlp.models.transformer_base import TransformerBase
 
 from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
@@ -16,10 +17,12 @@ from torch import nn
 logger = logging.getLogger(__name__)
 
 
-class TransformerForLM(TransformerRWKV4LMHeadModel):
+class MyRwkvForCausalLM(RwkvForCausalLM):...
+
+class TransformerForLM(TransformerBase):
     def __init__(self, *args, **kwargs):
         super(TransformerForLM, self).__init__(*args, **kwargs)
-
+        self.set_model(self.from_pretrained(MyRwkvForCausalLM, *args, **kwargs))
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
         #     if param.ndim == 1:
@@ -40,8 +43,6 @@ class TransformerForLM(TransformerRWKV4LMHeadModel):
         # # self.model.gradient_checkpointing_enable()
         # self.model.enable_input_require_grads()
         m: PreTrainedModel = self.model
-        if hasattr(m,'_require_grads_hook'):
-            m.disable_input_require_grads()
         m.enable_input_require_grads()
 
 
