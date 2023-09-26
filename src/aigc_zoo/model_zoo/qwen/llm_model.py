@@ -39,10 +39,11 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             system: str = "You are a helpful assistant.",
             append_history: bool = True,
             stop_words_ids: Optional[List[List[int]]] = None,
+            generation_config: Optional[GenerationConfig] = None,
             **kwargs
     ) -> Tuple[str, HistoryType]:
-
-        assert self.generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
+        generation_config = generation_config if generation_config is not None else self.generation_config
+        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
 
         if history is None:
             history = []
@@ -52,18 +53,18 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
 
         max_window_size = kwargs.pop('max_window_size', None)
         if max_window_size is None:
-            max_window_size = getattr(self.generation_config,"max_window_size",6144)
+            max_window_size = generation_config.max_window_size
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
             history=history,
             system=system,
             max_window_size=max_window_size,
-            chat_format=self.generation_config.chat_format,
+            chat_format=generation_config.chat_format,
         )
 
         stop_words_ids.extend(get_stop_words_ids(
-            self.generation_config.chat_format, tokenizer
+            generation_config.chat_format, tokenizer
         ))
         input_ids = torch.tensor([context_tokens]).to(self.device)
 
@@ -79,7 +80,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             tokenizer,
             raw_text_len=len(raw_text),
             context_length=len(context_tokens),
-            chat_format=self.generation_config.chat_format,
+            chat_format=generation_config.chat_format,
             verbose=False,
             errors='replace',
         )
@@ -96,37 +97,37 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             query: str,
             history: Optional[HistoryType],
             system: str = "You are a helpful assistant.",
+            generation_config: Optional[GenerationConfig] = None,
+            stop_words_ids=None,
             **kwargs
     ) -> Generator[str, Any, None]:
-
-        assert self.generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
+        generation_config = generation_config if generation_config is not None else self.generation_config
+        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
         if history is None:
             history = []
-
-        stop_words_ids = kwargs.pop('stop_words_ids', [])
-        if not isinstance(stop_words_ids, list):
-            stop_words_ids = [stop_words_ids]
-
+        if stop_words_ids is None:
+            stop_words_ids = []
         max_window_size = kwargs.get('max_window_size', None)
         if max_window_size is None:
-            max_window_size = getattr(self.generation_config,"max_window_size",6144)
+            max_window_size = generation_config.max_window_size
         logits_processor = kwargs.pop('logits_processor', None)
+
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
             history=history,
             system=system,
             max_window_size=max_window_size,
-            chat_format=self.generation_config.chat_format,
+            chat_format=generation_config.chat_format,
         )
 
         stop_words_ids.extend(get_stop_words_ids(
-            self.generation_config.chat_format, tokenizer
+            generation_config.chat_format, tokenizer
         ))
         if stop_words_ids is not None:
             stop_words_logits_processor = StopWordsLogitsProcessor(
                 stop_words_ids=stop_words_ids,
-                eos_token_id=self.generation_config.eos_token_id,
+                eos_token_id=generation_config.eos_token_id,
             )
             if logits_processor is None:
                 logits_processor = LogitsProcessorList([stop_words_logits_processor])
@@ -137,7 +138,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
         from transformers_stream_generator.main import NewGenerationMixin, StreamGenerationConfig
         self.__class__.generate_stream = NewGenerationMixin.generate
         self.__class__.sample_stream = NewGenerationMixin.sample_stream
-        stream_config = StreamGenerationConfig(**self.generation_config.to_dict(), do_stream=True)
+        stream_config = StreamGenerationConfig(**generation_config.to_dict(), do_stream=True)
 
         def stream_generator():
             outputs = []
@@ -152,6 +153,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
 
         return stream_generator()
 
+    @torch.no_grad()
     def generate(
             self,
             inputs: Optional[torch.Tensor] = None,
@@ -159,6 +161,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             logits_processor: Optional[LogitsProcessorList] = None,
             **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
+        generation_config = generation_config if generation_config is not None else self.generation_config
         # Process stop_words_ids.
         stop_words_ids = kwargs.pop("stop_words_ids", None)
         if stop_words_ids is None and generation_config is not None:
@@ -202,10 +205,9 @@ class TransformerForLM(TransformerBase):
 
 
     def enable_input_require_grads(self):
-        pass
         # setattr(self.model, 'model_parallel', True)
         # setattr(self.model, 'is_parallelizable', True)
-        # self.model.enable_input_require_grads()
+        self.model.enable_input_require_grads()
 
 
 
@@ -217,11 +219,14 @@ class TransformerForLM(TransformerBase):
 
 class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
     @hf_decorator
-    def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
-        lora_args: LoraConfig = kwargs.pop('lora_args',None)
-        num_layers_freeze = kwargs.pop('num_layers_freeze',-1)
+    def __init__(self, *args,new_num_tokens=None,lora_args=None,prompt_args=None,
+                 num_layers_freeze=-1,rope_args=None, **kwargs):
         super(MyTransformer, self).__init__(*args, **kwargs)
+        lora_args: LoraConfig
+        prompt_args: PromptLearningConfig
+
         self.lora_args = lora_args
+        self.prompt_args = prompt_args
         self.num_layers_freeze = num_layers_freeze
         #可能添加新词
         self.resize_token_embs(new_num_tokens)
