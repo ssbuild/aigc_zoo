@@ -53,7 +53,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
 
         max_window_size = kwargs.pop('max_window_size', None)
         if max_window_size is None:
-            max_window_size = generation_config.max_window_size
+            max_window_size = getattr(generation_config,"max_window_size",6144)
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
@@ -109,7 +109,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             stop_words_ids = []
         max_window_size = kwargs.get('max_window_size', None)
         if max_window_size is None:
-            max_window_size = generation_config.max_window_size
+            max_window_size = getattr(generation_config,"max_window_size",6144)
         logits_processor = kwargs.pop('logits_processor', None)
 
         raw_text, context_tokens = make_context(
