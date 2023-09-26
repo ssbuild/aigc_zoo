@@ -42,10 +42,7 @@ class TransformerDPOForLM(DpoModule,TransformerRWKV4LMHeadModel):
         # setattr(self.model, 'is_parallelizable', True)
         # # self.model.gradient_checkpointing_enable()
         # self.model.enable_input_require_grads()
-        m: PreTrainedModel = self.model
-        if hasattr(m,'_require_grads_hook'):
-            m.disable_input_require_grads()
-        m.enable_input_require_grads()
+        self.model.enable_input_require_grads()
 
 
 
