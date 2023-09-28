@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 install_requires = [
     # 'deep_training>=0.1.13,<=0.1.15',
-    'deep_training ~= 0.2.4.post2',
+    'deep_training ~= 0.2.4.post3',
     'numpy_io>=0.0.8',
 ]
 
