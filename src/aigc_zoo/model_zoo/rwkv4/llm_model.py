@@ -42,8 +42,7 @@ class TransformerForLM(TransformerBase):
         # setattr(self.model, 'is_parallelizable', True)
         # # self.model.gradient_checkpointing_enable()
         # self.model.enable_input_require_grads()
-        m: PreTrainedModel = self.model
-        m.enable_input_require_grads()
+        self.model.enable_input_require_grads()
 
 
 

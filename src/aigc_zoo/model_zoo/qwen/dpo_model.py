@@ -51,10 +51,9 @@ class TransformerDPOForLM(DpoModule,TransformerBase):
 
 
     def enable_input_require_grads(self):
-        pass
         # setattr(self.model, 'model_parallel', True)
         # setattr(self.model, 'is_parallelizable', True)
-        # self.model.enable_input_require_grads()
+        self.model.enable_input_require_grads()
 
 
 
