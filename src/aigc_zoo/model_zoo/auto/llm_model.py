@@ -4,7 +4,6 @@
 from typing import Optional, Any
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.transformer import TransformerForCausalLM
-
 from .base_wapper import BaseModelWrapper
 from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *

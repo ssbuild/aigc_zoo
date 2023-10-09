@@ -240,8 +240,8 @@ class MyTransformerChatGlmLMHeadModel(TransformerBase):
 
 
     def enable_input_require_grads(self):
-        setattr(self.model, 'model_parallel', True)
-        setattr(self.model, 'is_parallelizable', True)
+        #setattr(self.model, 'model_parallel', True)
+        #setattr(self.model, 'is_parallelizable', True)
         self.model.enable_input_require_grads()
 
 

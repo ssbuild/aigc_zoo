@@ -14,14 +14,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 class MyChatglmModelForCausalPrefixLMWithValueHead(ChatglmModelForCausalPrefixLMWithValueHead):
-    @hf_decorator
     def __init__(self, *args,up_sampling_score=False, **kwargs):
         super(MyChatglmModelForCausalPrefixLMWithValueHead, self).__init__(*args, up_sampling_score=up_sampling_score, **kwargs)
         self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
 
     def enable_input_require_grads(self):
-        setattr(self.model, 'model_parallel', True)
-        setattr(self.model, 'is_parallelizable', True)
+        #setattr(self.model, 'model_parallel', True)
+        #setattr(self.model, 'is_parallelizable', True)
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
@@ -29,6 +28,7 @@ class MyChatglmModelForCausalPrefixLMWithValueHead(ChatglmModelForCausalPrefixLM
 
 
 class MyPPOTransformer(MyChatglmModelForCausalPrefixLMWithValueHead,PPOModelLoss,ModelWeightMixin, with_pl=True):
+    @hf_decorator
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
         ppo_args: PPOConfig = kwargs.pop('ppo_args', None)

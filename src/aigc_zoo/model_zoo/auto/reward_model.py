@@ -1,48 +1,51 @@
 # -*- coding: utf-8 -*-
 # @Author  : ssbuild
-# @Time    : 2023/5/29 13:34
+# @Time    : 2023/5/29 9:46
 import torch
-from ...weight.modelweighter import *
 from torch import nn
-from deep_training.nlp.models.transformer_base import TransformerBase
+from .llm_model import TransformerForLM
 from ...utils.transformer_utils import hf_decorator
-from .llm_model import MyChatGLMForConditionalGeneration,MyTransformerChatGlmLMHeadModel
+from ...weight.modelweighter import *
+
 import logging
 logger = logging.getLogger(__name__)
 
+class RewardModel(TransformerForLM):
+    def __init__(self, *args, **kwargs):
+        super(RewardModel, self).__init__(*args, **kwargs)
 
-__all__ = [
-    'MyRewardChatGlmLMHeadModel',
-    'MyRewardTransformer'
-]
-
-
-
-class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
-    def __init__(self,*args,**kwargs):
-        super(MyRewardChatGlmLMHeadModel, self).__init__(*args,**kwargs)
         base_model_prefix = self.base_model_prefix[:-1] if self.base_model_prefix.endswith('_') else self.base_model_prefix
-        self.transformer_bone = getattr(self.model,base_model_prefix,None)
-        assert self.transformer_bone is not None
-        self.score = nn.Linear(self.config.hidden_size, self.config.num_labels)
+        self.model_key = base_model_prefix
+        transformer_bone = getattr(self.model,base_model_prefix,None)
+        assert transformer_bone is not None
+        hidden_size = self.config.word_embed_proj_dim if getattr(self.config,'word_embed_proj_dim',None) else self.config.hidden_size
+        self.score = nn.Linear(hidden_size, self.config.num_labels)
         self.pad_token_id = self.config.pad_token_id or self.config.eos_token_id
+        self._batch_first = False if self.config.model_type == 'chatglm' else True
 
+    def enable_input_require_grads(self):
+        # setattr(self.model, 'model_parallel', True)
+        # setattr(self.model, 'is_parallelizable', True)
+        # self.model.gradient_checkpointing_enable()
+        self.model.enable_input_require_grads()
 
     def forward_value(self,**batch):
-        state = self.transformer_bone(**batch)[0]
+        state = getattr(self.model,self.model_key,None)(**batch)[0]
         value = self.score(state)
-        return value.squeeze(-1).permute(1, 0).contiguous()
+        return value.squeeze(-1) if self._batch_first else value.squeeze(-1).permute(1, 0).contiguous()
 
 
     def forward_loss(self,
                      chosen_ids: torch.Tensor, chosen_values: torch.Tensor,
                      rejected_ids: torch.Tensor, rejected_values: torch.Tensor):
+
         pad_token_id = self.pad_token_id
         chosen_mean_scores = []
         rejected_mean_scores = []
         loss = 0.
+        bs = chosen_ids.size(0)
         # pad_id = torch.tensor(self.config.pad_token_id, dtype=chosen_ids.dtype, device=chosen_values.device)
-        for i in range(chosen_ids.size(0)):
+        for i in range(bs):
             chosen_id = chosen_ids[i]
             rejected_id = rejected_ids[i]
             chosen_value = chosen_values[i]
@@ -59,7 +62,6 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
             divergence_ind = (chosen_id != rejected_id).nonzero()[0]
             assert divergence_ind > 0
 
-
             # Index into the correct rewards
             c_truncated_reward = chosen_value[divergence_ind:end_ind]
             r_truncated_reward = rejected_value[divergence_ind:end_ind]
@@ -71,7 +73,7 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
             # Compute loss based on truncated rewards (ignore padding)
             loss += -torch.log(torch.sigmoid(c_truncated_reward - r_truncated_reward)).mean()
 
-        loss = loss / chosen_ids.size(0)
+        loss /= bs
         chosen_mean_scores = torch.stack(chosen_mean_scores)
         rejected_mean_scores = torch.stack(rejected_mean_scores)
         return loss,chosen_mean_scores,rejected_mean_scores
@@ -84,7 +86,7 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
         for i in range(bs):
             input_id = input_ids[i]
             value = values[i]
-            c_inds = (input_id == self.config.pad_token_id).nonzero()
+            c_inds = (input_id == self.pad_token_id).nonzero()
             # here we only use the answer part of the sequence so we do not need to care about the padding at the beginning
             c_ind = c_inds[0].item() if len(c_inds) > 0 else seq_len
             chosen_mean_scores.append(value[c_ind - 1])
@@ -92,22 +94,22 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
 
     def forward_returns(self, **inputs):
         input_ids = inputs['input_ids']
-        rewards = self.forward_value(**inputs)
+        values = self.forward_value(**inputs)
         ends = torch.argmax((input_ids == self.config.eos_token_id).float(), dim=1).view(-1, 1)
-        returns = torch.gather(rewards, 1, ends).squeeze(-1)
+        returns = torch.gather(values, 1, ends).squeeze(-1)
         return returns
 
-
-    def compute_loss(self, *args,return_value_only=False,**batch) -> tuple:
-        input_a,input_b = {},{}
-        for k,v in batch.items():
-            i,k = (input_b,k[:-1]) if k.endswith('2') else (input_a,k)
+    def compute_loss(self, *args, return_value_only=False, **batch) -> tuple:
+        input_a, input_b = {}, {}
+        for k, v in batch.items():
+            i, k = (input_b, k[:-1]) if k.endswith('2') else (input_a, k)
             i[k] = v
 
         value_a = self.forward_value(**input_a)
         if len(input_b) > 0:
             value_b = self.forward_value(**input_b)
-            loss,chosen_mean_scores,rejected_mean_scores = self.forward_loss(input_a["input_ids"],value_a,input_b["input_ids"],value_b)
+            loss, chosen_mean_scores, rejected_mean_scores = self.forward_loss(input_a["input_ids"], value_a,
+                                                                               input_b["input_ids"], value_b)
             loss_dict = {
                 "loss": loss,
                 "chosen_mean_scores": chosen_mean_scores.mean(),
@@ -115,34 +117,31 @@ class MyRewardChatGlmLMHeadModel(MyTransformerChatGlmLMHeadModel):
             }
             if self.training:
                 return (loss_dict,)
-            return (loss,value_a,value_b)
+            return (loss, value_a, value_b,chosen_mean_scores,rejected_mean_scores)
+
+
         if return_value_only:
             return (value_a,)
         scores = self.forward_score(batch["input_ids"], value_a)
-        return (value_a,scores)
+        return (value_a, scores)
 
 
 
 
-# 训练
-
-class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=True):
+class MyRewardTransformer(RewardModel, ModelWeightMixin, with_pl=True):
     @hf_decorator
-    def __init__(self, *args,new_num_tokens=None, **kwargs):
+    def __init__(self, *args,new_num_tokens=None,**kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
+        prompt_args: PromptLearningConfig = kwargs.pop('prompt_args', None)
         super(MyRewardTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
-        self.prompt_args = None
+        self.prompt_args = prompt_args
         self.resize_token_embs(new_num_tokens)
         self.inject_model()
 
+
     def inject_model(self):
         lora_args = self.lora_args
-
-        # ptv2
-        if (self.config.pre_seq_len or 0) > 0:
-            self.backbone.enable_input_require_grads()
-
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args, auto_prepare_kbit_training=True)
@@ -158,7 +157,6 @@ class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=
             #         if hasattr(module, 'weight'):
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
-
 
     def resize_token_embs(self, new_num_tokens):
         if new_num_tokens is not None:
@@ -196,7 +194,6 @@ class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=
             # PromptModel 方法覆盖原来方法
             return self.backbone.model
         return self.backbone.model
-
 
     def forward_returns(self,*args,**kwargs):
         if self.lora_args is not None and self.lora_args.with_lora:
