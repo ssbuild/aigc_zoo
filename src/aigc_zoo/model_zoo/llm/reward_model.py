@@ -5,13 +5,14 @@ import torch
 from deep_training.nlp.models.transformer import TransformerForCausalLM
 from torch import nn
 
+from .llm_model import TransformerForLM
 from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
 
 import logging
 logger = logging.getLogger(__name__)
 
-class RewardModel(TransformerForCausalLM):
+class RewardModel(TransformerForLM):
     def __init__(self, *args, **kwargs):
         super(RewardModel, self).__init__(*args, **kwargs)
 
@@ -21,11 +22,11 @@ class RewardModel(TransformerForCausalLM):
         assert transformer_bone is not None
         hidden_size = self.config.word_embed_proj_dim if getattr(self.config,'word_embed_proj_dim',None) else self.config.hidden_size
         self.score = nn.Linear(hidden_size, self.config.num_labels)
-
+        self.pad_token_id = self.config.pad_token_id or self.config.eos_token_id
 
     def enable_input_require_grads(self):
-        setattr(self.model, 'model_parallel', True)
-        setattr(self.model, 'is_parallelizable', True)
+        #setattr(self.model, 'model_parallel', True)
+        #setattr(self.model, 'is_parallelizable', True)
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
@@ -35,8 +36,11 @@ class RewardModel(TransformerForCausalLM):
         return value.squeeze(-1)
 
 
-    def forward_loss(self,chosen_ids: torch.Tensor, chosen_values: torch.Tensor,
+    def forward_loss(self,
+                     chosen_ids: torch.Tensor, chosen_values: torch.Tensor,
                      rejected_ids: torch.Tensor, rejected_values: torch.Tensor):
+
+        pad_token_id = self.pad_token_id
         chosen_mean_scores = []
         rejected_mean_scores = []
         loss = 0.
@@ -49,9 +53,9 @@ class RewardModel(TransformerForCausalLM):
             rejected_value = rejected_values[i]
 
             # Check if there is any padding otherwise take length of sequence
-            c_inds = (chosen_id == self.config.pad_token_id).nonzero()
+            c_inds = (chosen_id == pad_token_id).nonzero()
             c_ind = c_inds[0].item() if len(c_inds) > 0 else chosen_id.shape[0]
-            r_inds = (rejected_id == self.config.pad_token_id).nonzero()
+            r_inds = (rejected_id == pad_token_id).nonzero()
             r_ind = r_inds[0].item() if len(r_inds) > 0 else rejected_id.shape[0]
             end_ind = max(c_ind, r_ind)
 
@@ -83,7 +87,7 @@ class RewardModel(TransformerForCausalLM):
         for i in range(bs):
             input_id = input_ids[i]
             value = values[i]
-            c_inds = (input_id == self.config.pad_token_id).nonzero()
+            c_inds = (input_id == self.pad_token_id).nonzero()
             # here we only use the answer part of the sequence so we do not need to care about the padding at the beginning
             c_ind = c_inds[0].item() if len(c_inds) > 0 else seq_len
             chosen_mean_scores.append(value[c_ind - 1])

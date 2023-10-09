@@ -20,8 +20,8 @@ class ILQLModelForCausalLMWithILQLHeads(AutoModelForCausalLMWithILQLHeads):
         super(ILQLModelForCausalLMWithILQLHeads, self).__init__(*args,hidden_size=hidden_size,up_sampling_score=up_sampling_score, **kwargs)
 
     def enable_input_require_grads(self):
-        setattr(self.model, 'model_parallel', True)
-        setattr(self.model, 'is_parallelizable', True)
+        #setattr(self.model, 'model_parallel', True)
+        #setattr(self.model, 'is_parallelizable', True)
         # self.model.gradient_checkpointing_enable()
         self.model.enable_input_require_grads()
 
