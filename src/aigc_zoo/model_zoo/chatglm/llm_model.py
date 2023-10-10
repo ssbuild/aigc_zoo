@@ -256,7 +256,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
         self.prompt_args = None
         self.num_layers_freeze = num_layers_freeze
         #可能添加新词
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
         self.inject_model()

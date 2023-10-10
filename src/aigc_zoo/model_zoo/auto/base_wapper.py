@@ -35,7 +35,7 @@ class BaseModelWrapper:
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
 
-    def resize_token_embs(self,new_num_tokens):
+    def resize_token_embs(self,new_num_tokens,pad_to_multiple_of=128):
         if new_num_tokens is not None:
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
@@ -51,7 +51,7 @@ class BaseModelWrapper:
 
                 logger.info("resize the embedding size by the size of the tokenizer")
                 # print('before',self.config)
-                model.resize_token_embeddings(new_num_tokens)
+                model.resize_token_embeddings(new_num_tokens,pad_to_multiple_of=pad_to_multiple_of)
                 # print('after',self.config)
 
 

@@ -81,7 +81,7 @@ class MyTransformer(BaseModelWrapper,TransformerForLM, ModelWeightMixin, with_pl
         self.lora_args = lora_args
         self.prompt_args = prompt_args
         #可能扩充词表
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.inject_model()
 
 

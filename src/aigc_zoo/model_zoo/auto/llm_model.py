@@ -46,7 +46,7 @@ class MyTransformer(BaseModelWrapper,TransformerForLM, ModelWeightMixin, with_pl
         self.prompt_args = prompt_args
         self.rope_args = rope_args
 
-        self.resize_token_embs(new_num_tokens)   #可能扩充词表
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))   #可能扩充词表
         inject_rope_scale_layer(self.backbone, rope_args)
         self.inject_model()
 
