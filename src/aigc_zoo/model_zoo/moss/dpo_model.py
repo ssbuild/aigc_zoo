@@ -65,7 +65,7 @@ class TransformerDPO(TransformerDPOForLM,ModelWeightMixin, with_pl=True):
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
         # 可能扩充词表
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.inject_model()
 
     def inject_model(self):

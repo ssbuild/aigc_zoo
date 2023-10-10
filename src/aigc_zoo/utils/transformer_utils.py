@@ -18,4 +18,5 @@ def preprocess_hf_kwargs(self,kwargs: typing.Dict):
     # if not load_in_8bit and not load_in_4bit:
     #     kwargs.pop("device_map", None)
     #     kwargs.pop("quantization_config", None)
+    self.pad_to_multiple_of = kwargs.pop('pad_to_multiple_of', None)
     self.gradient_checkpointing = kwargs.pop('gradient_checkpointing', False)

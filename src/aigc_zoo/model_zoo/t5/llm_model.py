@@ -32,7 +32,7 @@ class MyTransformer(TransformerForLM,ModelWeightMixin, with_pl=True):
         super(MyTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = prompt_args
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.inject_model()
 
     def inject_model(self):

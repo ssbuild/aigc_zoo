@@ -34,7 +34,7 @@ class MyPPOTransformer(MyModelForSeq2SeqLMWithValueHead,PPOModelLoss,ModelWeight
         self.lora_args = lora_args
         self.ppo_config = ppo_args
 
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
 
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
