@@ -50,7 +50,7 @@ class MyPPOTransformer(PPOModelForCausalLMWithValueHead, PPOModelLoss,ModelWeigh
         self.ppo_config = ppo_args
         self.prompt_args=prompt_args
 
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.inject_model()
 
 

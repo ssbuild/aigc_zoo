@@ -133,7 +133,7 @@ class MyRewardTransformer(MyRewardChatGlmLMHeadModel, ModelWeightMixin, with_pl=
         super(MyRewardTransformer, self).__init__(*args, **kwargs)
         self.lora_args = lora_args
         self.prompt_args = None
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
         self.inject_model()
 
     def inject_model(self):

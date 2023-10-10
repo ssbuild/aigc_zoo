@@ -97,7 +97,7 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
         self.prompt_args = prompt_args
 
         #可能扩充词表
-        self.resize_token_embs(new_num_tokens)
+        self.resize_token_embs(new_num_tokens,getattr(self,"pad_to_multiple_of",128))
 
         self.rope_args = rope_args
         inject_rope_scale_layer(self.backbone, rope_args)
@@ -129,7 +129,7 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
 
-    def resize_token_embs(self,new_num_tokens):
+    def resize_token_embs(self,new_num_tokens,pad_to_multiple_of=128):
         if new_num_tokens is not None:
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
