@@ -108,7 +108,7 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
         lora_args,prompt_args = self.lora_args,self.prompt_args
         if lora_args is not None and lora_args.with_lora:
             self.backbone.enable_input_require_grads()
-            model: PetlModel = PetlModel(self.backbone, lora_args,auto_prepare_kbit_training=True)
+            model: PetlModel = PetlModel(self.backbone, lora_args,auto_prepare_kbit_training=True,use_gradient_checkpointing=getattr(self,"gradient_checkpointing",False) )
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)

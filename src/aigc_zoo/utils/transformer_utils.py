@@ -4,11 +4,11 @@
 import typing
 def hf_decorator(fn):
     def hf_fn(self,*args,**kwargs):
-        preprocess_hf_kwargs(kwargs)
+        preprocess_hf_kwargs(self,kwargs)
         fn(self,*args,**kwargs)
     return hf_fn
 
-def preprocess_hf_kwargs(kwargs: typing.Dict):
+def preprocess_hf_kwargs(self,kwargs: typing.Dict):
     # load_in_8bit = kwargs.get('load_in_8bit', False)
     # load_in_4bit = kwargs.get('load_in_4bit', False)
     # quantization_config = kwargs.get("quantization_config", None)
@@ -18,4 +18,4 @@ def preprocess_hf_kwargs(kwargs: typing.Dict):
     # if not load_in_8bit and not load_in_4bit:
     #     kwargs.pop("device_map", None)
     #     kwargs.pop("quantization_config", None)
-    ...
+    self.gradient_checkpointing = kwargs.pop('gradient_checkpointing', False)
