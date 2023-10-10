@@ -146,7 +146,7 @@ class MyTransformer(TransformerForLM, ModelWeightMixin, with_pl=True):
 
                 logger.info("resize the embedding size by the size of the tokenizer")
                 # print('before',self.config)
-                model.resize_token_embeddings(new_num_tokens)
+                model.resize_token_embeddings(new_num_tokens,pad_to_multiple_of=pad_to_multiple_of)
                 # print('after',self.config)
 
 
