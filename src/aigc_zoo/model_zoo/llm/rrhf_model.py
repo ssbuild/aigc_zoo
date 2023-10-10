@@ -15,23 +15,11 @@ __all__ = [
 ]
 
 class RRHFModelForCausalLM(TransformerForCausalLM):
-    def __init__(self,*args,**kwargs):
-        # 如果显卡支持int8 可以开启
-        load_in_8bit = kwargs.get('load_in_8bit', False)
-        load_in_4bit = kwargs.get('load_in_4bit', False)
-        if not load_in_4bit:
-            quantization_config = kwargs.get("quantization_config", None)
-            if quantization_config:
-                load_in_4bit = quantization_config.load_in_4bit
-
-        if not load_in_8bit and not load_in_4bit:
-            kwargs.pop("device_map", None)
-            kwargs.pop("quantization_config", None)
+    def __init__(self, *args, length_penalty=1.0, rrhf_weight=1.0, **kwargs):
         super(RRHFModelForCausalLM, self).__init__(*args, **kwargs)
+        self.length_penalty = length_penalty
+        self.rrhf_weight = rrhf_weight
 
-
-        self.length_penalty = kwargs.get('length_penalty',1.0)
-        self.rrhf_weight = kwargs.get('rrhf_weight', 1.0)
 
     def enable_input_require_grads(self):
         #setattr(self.model, 'model_parallel', True)
@@ -120,7 +108,7 @@ class MyRRHFTransformer(RRHFModelForCausalLM,ModelWeightMixin,with_pl=True):
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
 
-    def resize_token_embs(self, new_num_tokens):
+    def resize_token_embs(self, new_num_tokens,pad_to_multiple_of=128):
         if new_num_tokens is not None:
             logger.info(f"new_num_tokens:{new_num_tokens}")
             model: PreTrainedModel = self.backbone.model
@@ -136,7 +124,7 @@ class MyRRHFTransformer(RRHFModelForCausalLM,ModelWeightMixin,with_pl=True):
 
                 logger.info("resize the embedding size by the size of the tokenizer")
                 # print('before',self.config)
-                model.resize_token_embeddings(new_num_tokens)
+                model.resize_token_embeddings(new_num_tokens,pad_to_multiple_of=pad_to_multiple_of)
                 # print('after',self.config)
 
 
