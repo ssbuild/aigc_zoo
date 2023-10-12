@@ -20,3 +20,4 @@ def preprocess_hf_kwargs(self,kwargs: typing.Dict):
     #     kwargs.pop("quantization_config", None)
     self.pad_to_multiple_of = kwargs.pop('pad_to_multiple_of', None)
     self.gradient_checkpointing = kwargs.pop('gradient_checkpointing', False)
+    self.auto_prepare_kbit_training = kwargs.pop('auto_prepare_kbit_training', True)
