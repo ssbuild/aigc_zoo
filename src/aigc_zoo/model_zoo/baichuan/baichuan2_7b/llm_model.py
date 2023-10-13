@@ -72,7 +72,7 @@ class TransformerForLM(TransformerBase):
 
 
 
-class MyTransformer(BaseModelWrapper,TransformerForLM, ModelWeightMixin, with_pl=True):
+class MyTransformer(TransformerForLM, ModelWeightMixin,BaseModelWrapper, with_pl=True):
     @hf_decorator
     def __init__(self, *args,new_num_tokens=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)
