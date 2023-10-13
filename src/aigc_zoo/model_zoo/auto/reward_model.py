@@ -146,7 +146,8 @@ class MyRewardTransformer(RewardModel, ModelWeightMixin, with_pl=True):
             self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,
                                          auto_prepare_kbit_training=getattr(self,"auto_prepare_kbit_training",True), 
-                                         use_gradient_checkpointing=getattr(self, "gradient_checkpointing", False)
+                                         use_gradient_checkpointing=getattr(self,"use_gradient_checkpointing", False),
+                                         use_input_require_grads=getattr(self,"use_input_require_grads", True)
                                          )
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()

@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # @Author  : ssbuild
 # @Time    : 2023/9/20 10:15
+import re
 from deep_training.nlp.models.petl import PetlModel
 from deep_training.nlp.models.petl.prompt import get_prompt_model, PromptModel
+from torch import nn
 from transformers import PreTrainedModel
 
 
@@ -12,11 +14,14 @@ logger = logging.getLogger(__name__)
 class BaseModelWrapper:
     def inject_model(self):
         lora_args,prompt_args = self.lora_args,self.prompt_args
+        num_layers_freeze = getattr(self,"num_layers_freeze",-1)
+        pre_seq_len = getattr(self.config,"pre_seq_len",None)
         if lora_args is not None and lora_args.with_lora:
-            self.backbone.enable_input_require_grads()
+            # self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,
                                          auto_prepare_kbit_training=getattr(self,"auto_prepare_kbit_training",True), 
-                                         use_gradient_checkpointing=getattr(self,"gradient_checkpointing",False) )
+                                         use_gradient_checkpointing=getattr(self,"gradient_checkpointing",False),
+                                         use_input_require_grads=getattr(self,"use_input_require_grads", True))
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
@@ -36,6 +41,16 @@ class BaseModelWrapper:
             print('==' * 30, 'prompt info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
+
+        elif num_layers_freeze > 0 and pre_seq_len is None:  # 非 lora freeze 非 ptuning模式
+            M: nn.Module = self.backbone
+            for param in M.named_parameters():
+                result = re.match(re.compile('.*transformer.layers.(\\d+)'), param[ 0 ])
+                if result is not None:
+                    n_layer = int(result.group(1))
+                    if n_layer < num_layers_freeze:
+                        param[ 1 ].requires_grad = False
+                        print('freeze layer', param[ 0 ])
 
     def resize_token_embs(self,new_num_tokens,pad_to_multiple_of=128):
         if new_num_tokens is not None:
