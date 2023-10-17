@@ -10,7 +10,8 @@ import requests
 import torch
 from torch import nn
 from deep_training.nlp.layers.rope_scale.patch import *
-from deep_training.nlp.models.visualglm.modeling_chatglm import ChatGLMForConditionalGeneration,ChatGLMConfig,setup_model_profile # noqa
+from deep_training.nlp.models.visualglm.modeling_chatglm import ChatGLMForConditionalGeneration, ChatGLMConfig, \
+    setup_model_profile, ChatGLMForConditionalGenerationWithImage  # noqa
 from deep_training.nlp.models.transformer import TransformerBase
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList
 from deep_training.nlp.models.visualglm.visual import BlipImageEvalProcessor
@@ -35,9 +36,9 @@ class InvalidScoreLogitsProcessor(LogitsProcessor):
             scores[..., 5] = 5e4
         return scores
 
-class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
+class MyChatGLMForConditionalGenerationWithImage(ChatGLMForConditionalGenerationWithImage):
     def __init__(self,config):
-        super(MyChatGLMForConditionalGeneration, self).__init__(config)
+        super(MyChatGLMForConditionalGenerationWithImage, self).__init__(config)
 
     @staticmethod
     def process_image(text, image=None):
@@ -130,7 +131,7 @@ class MyChatGLMForConditionalGeneration(ChatGLMForConditionalGeneration):
 class MyTransformerChatGlmLMHeadModel(TransformerBase):
     def __init__(self, *args,**kwargs):
         super(MyTransformerChatGlmLMHeadModel, self).__init__(*args,**kwargs)
-        self.set_model(self.from_pretrained(MyChatGLMForConditionalGeneration, *args, **kwargs))
+        self.set_model(self.from_pretrained(MyChatGLMForConditionalGenerationWithImage, *args, **kwargs))
 
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
@@ -175,7 +176,7 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin,BaseModelWr
             return [(self.backbone, lr)]
         return super(MyTransformer, self).get_model_lr(model, lr)
 
-    def get_llm_model(self) -> MyChatGLMForConditionalGeneration:
+    def get_llm_model(self) -> MyChatGLMForConditionalGenerationWithImage:
         if self.lora_args is not None and self.lora_args.with_lora:
             return self.backbone.model.model
         return self.backbone.model
