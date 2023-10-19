@@ -47,8 +47,9 @@ class GeneratorBase:
             kwargs['return_dict_in_generate'] = True
 
         outputs = self.model.generate(**inputs, **kwargs)
-
-        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,dict) else len(inputs[0])
+        prompt_length = 0
+        if not self.model.config.is_encoder_decoder:
+            prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,dict) else len(inputs[0])
         response = self.post_process(outputs, prompt_length,output_scores)
         return response
 
@@ -60,8 +61,11 @@ class GeneratorBase:
         output_scores = kwargs.get('output_scores', False)
         if output_scores:
             kwargs['return_dict_in_generate'] = True
+
         outputs = self.model.generate(**inputs, **kwargs)
-        prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,(dict,BatchEncoding)) else len(inputs[0])
+        prompt_length = 0
+        if not self.model.config.is_encoder_decoder:
+            prompt_length = len(inputs["input_ids"][0]) if isinstance(inputs,(dict,BatchEncoding)) else len(inputs[0])
         response = self.post_process(outputs, prompt_length,output_scores)
         return response,history
 

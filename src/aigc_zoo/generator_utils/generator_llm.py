@@ -7,13 +7,11 @@ class Generate(GeneratorBase):
     def preprocess_inputs(self,query,history = None,**kwargs):
         if history is None:
             history = []
-        if not history:
-            prompt = query
-        else:
-            prompt = ""
-            for i, (old_query, response) in enumerate(history):
-                prompt += "[Round {}]\n问：{}\n答：{}\n".format(i, old_query, response)
-            prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
+        prompt = ''
+        if history is not None:
+            for q, a in history:
+                prompt += "用户：{}\n小元：{}".format(q, a)
+        prompt += "用户：{}\n小元：".format(query)
         return prompt,history
 
 
