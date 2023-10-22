@@ -45,6 +45,8 @@ TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
     'baichuan': ['W_pack'],
     'internlm': ['q_proj','k_proj','v_proj'],
     'qwen': ['c_attn'],
+    "clip": [ "q_proj", "v_proj" ],
+    "chinese_clip": ["query","value","k_proj","v_proj"],
 
 }
 
@@ -82,6 +84,8 @@ TRANSFORMERS_MODELS_TO_ADALORA_TARGET_MODULES_MAPPING = {
     'baichuan': ['W_pack'],
     'internlm': ['q_proj',  'v_proj'],
     'qwen': ['c_attn'],
+    "clip": [ "q_proj", "v_proj" ],
+    "chinese_clip": [ "query", "value", "k_proj", "v_proj" ],
 }
 
 TRANSFORMERS_MODELS_TO_IA3_TARGET_MODULES_MAPPING = {
@@ -114,6 +118,8 @@ TRANSFORMERS_MODELS_TO_IA3_TARGET_MODULES_MAPPING = {
     'baichuan': ['W_pack',"mlp.down_proj"],
     'internlm': ['q_proj', 'v_proj',"mlp.down_proj"],
     'qwen': ['c_attn',"mlp.c_proj"],
+    "clip": [ "q_proj", "v_proj", "fc2" ],
+    "chinese_clip": ["query","value","k_proj","v_proj", "fc2"],
 }
 
 TRANSFORMERS_MODELS_TO_IA3_FEEDFORWARD_MODULES_MAPPING = {
@@ -146,4 +152,6 @@ TRANSFORMERS_MODELS_TO_IA3_FEEDFORWARD_MODULES_MAPPING = {
     'baichuan': ["mlp.down_proj"],
     'internlm': ["mlp.down_proj"],
     'qwen': ["mlp.c_proj"],
+    "clip": [ "fc2",  ],
+    "chinese_clip": ["fc2",],
 }
