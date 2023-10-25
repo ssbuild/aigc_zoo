@@ -48,6 +48,7 @@ TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
     "clip": [ "q_proj", "v_proj" ],
     "chinese_clip": ["query","value","k_proj","v_proj"],
     "whisper": ["q_proj", "v_proj"],
+    "wav2vec2": ["q_proj", "v_proj"]
 
 }
 
@@ -88,6 +89,7 @@ TRANSFORMERS_MODELS_TO_ADALORA_TARGET_MODULES_MAPPING = {
     "clip": [ "q_proj", "v_proj" ],
     "chinese_clip": [ "query", "value", "k_proj", "v_proj" ],
     "whisper": ["q_proj", "v_proj"],
+    "wav2vec2": ["q_proj", "v_proj"],
 }
 
 TRANSFORMERS_MODELS_TO_IA3_TARGET_MODULES_MAPPING = {
