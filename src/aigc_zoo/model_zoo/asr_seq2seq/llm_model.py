@@ -3,7 +3,7 @@
 # @Time    : 2023/10/24 10:58
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.transformer import TransformerBase
-from transformers import AutoModelForSeq2SeqLM
+from transformers import AutoModelForSpeechSeq2Seq
 from ..auto.base_wapper import BaseModelWrapper
 from ...utils.transformer_utils import hf_decorator
 from ...weight.modelweighter import *
@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TransformerForSeq2SeqLM(TransformerBase):
+class TransformerForSpeechSeq2SeqLM(TransformerBase):
     def __init__(self, *args,model_class=None,**kwargs):
-        super(TransformerForSeq2SeqLM, self).__init__(*args,**kwargs)
-        self.set_model(self.from_pretrained(model_class or AutoModelForSeq2SeqLM,*args,**kwargs))
+        super(TransformerForSpeechSeq2SeqLM, self).__init__(*args,**kwargs)
+        self.set_model(self.from_pretrained(model_class or AutoModelForSpeechSeq2Seq,*args,**kwargs))
 
         # for param in self.model.parameters():
         #     param.requires_grad = False  # freeze the model - train adapters later
@@ -38,10 +38,9 @@ class TransformerForSeq2SeqLM(TransformerBase):
 
 
     def compute_loss(self, *args,**batch) -> tuple:
-        batch['return_loss'] = True
         return super().compute_loss(*args,**batch)
 
-class MyTransformer(TransformerForSeq2SeqLM, ModelWeightMixin,BaseModelWrapper, with_pl=True):
+class MyTransformer(TransformerForSpeechSeq2SeqLM, ModelWeightMixin,BaseModelWrapper, with_pl=True):
     @hf_decorator
     def __init__(self, *args,new_num_tokens=None,rope_args=None, **kwargs):
         lora_args: LoraConfig = kwargs.pop('lora_args', None)

@@ -38,7 +38,6 @@ class TransformerForVision2Seq(TransformerBase):
 
 
     def compute_loss(self, *args,**batch) -> tuple:
-        batch['return_loss'] = True
         return super().compute_loss(*args,**batch)
 
 class MyTransformer(TransformerForVision2Seq, ModelWeightMixin,BaseModelWrapper, with_pl=True):
