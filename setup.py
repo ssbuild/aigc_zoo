@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 install_requires = [
     # 'deep_training>=0.1.13,<=0.1.15',
     # 'deep_training ~= 0.2.6.rc0',
-    'deep_training ~= 0.2.7',
+    'deep_training ~= 0.2.7.post0',
 ]
 
 if __name__ == '__main__':
