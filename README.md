@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    11-01 0.2.7.post1 release
     10-19 0.2.6 support visualglm qwen_vl muti-model
     10-12 0.2.5.post5 gradient_checkpointing = False
     09-26 0.2.4 support qwen-7b 新版 和 qwen-14b ， 旧版不再支持，旧版可以安装 deep_training <= 0.2.3
@@ -42,7 +43,7 @@ torch >= 2
 ```
 
 ## AIGC 数据共享
-[数据共享](http://101.42.176.124:8080)
+[数据共享](http://124.70.99.221:8080)
 [大模型评估](https://github.com/ssbuild/aigc_eval)
 
 ## 友情链接
