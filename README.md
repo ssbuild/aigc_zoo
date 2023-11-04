@@ -46,7 +46,7 @@ torch >= 2
 
 ## AIGC 数据共享
 [数据共享](http://124.70.99.221:8080)
-[大模型评估](https://github.com/ssbuild/aigc_eval)
+[大模型评估](https://github.com/ssbuild/aigc_evals)
 
 ## 友情链接
 
@@ -66,10 +66,14 @@ torch >= 2
 - [xverse_finetuning](https://github.com/ssbuild/xverse_finetuning)
 - [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
 - [qwen_finetuning](https://github.com/ssbuild/qwen_finetuning)
-- [skywork_finetuning](https://github.com/ssbuild/skywork_finetuning)\
+- [skywork_finetuning](https://github.com/ssbuild/skywork_finetuning)
 - [bluelm_finetuning](https://github.com/ssbuild/bluelm_finetuning)
 - [yi_finetuning](https://github.com/ssbuild/yi_finetuning)
+- [aigc_evals](https://github.com/ssbuild/aigc_evals)
 - [aigc_serving](https://github.com/ssbuild/aigc_serving)
+
+
+
 ## 
     纯粹而干净的代码
 
