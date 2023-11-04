@@ -51,9 +51,11 @@ torch >= 2
 ## 友情链接
 
 - [pytorch-task-example](https://github.com/ssbuild/pytorch-task-example)
+- [tf-task-example](https://github.com/ssbuild/tf-task-example)
 - [chatmoss_finetuning](https://github.com/ssbuild/chatmoss_finetuning)
 - [chatglm_finetuning](https://github.com/ssbuild/chatglm_finetuning)
 - [chatglm2_finetuning](https://github.com/ssbuild/chatglm2_finetuning)
+- [chatglm3_finetuning](https://github.com/ssbuild/chatglm3_finetuning)
 - [t5_finetuning](https://github.com/ssbuild/t5_finetuning)
 - [llm_finetuning](https://github.com/ssbuild/llm_finetuning)
 - [llm_rlhf](https://github.com/ssbuild/llm_rlhf)
@@ -61,10 +63,12 @@ torch >= 2
 - [t5_rlhf](https://github.com/ssbuild/t5_rlhf)
 - [rwkv_finetuning](https://github.com/ssbuild/rwkv_finetuning)
 - [baichuan_finetuning](https://github.com/ssbuild/baichuan_finetuning)
+- [xverse_finetuning](https://github.com/ssbuild/xverse_finetuning)
 - [internlm_finetuning](https://github.com/ssbuild/internlm_finetuning)
 - [qwen_finetuning](https://github.com/ssbuild/qwen_finetuning)
-- [xverse_finetuning](https://github.com/ssbuild/xverse_finetuning)
-- [auto_finetuning](https://github.com/ssbuild/auto_finetuning)
+- [skywork_finetuning](https://github.com/ssbuild/skywork_finetuning)\
+- [bluelm_finetuning](https://github.com/ssbuild/bluelm_finetuning)
+- [yi_finetuning](https://github.com/ssbuild/yi_finetuning)
 - [aigc_serving](https://github.com/ssbuild/aigc_serving)
 ## 
     纯粹而干净的代码
