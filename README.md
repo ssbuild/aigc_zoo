@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    11-13 0.2.9
     11-01 0.2.7 
           0.2.7.post1 support skywork,bluelm
           0.2.7.post2 support yi
@@ -52,7 +53,7 @@ torch >= 2
 
 - [pytorch-task-example](https://github.com/ssbuild/pytorch-task-example)
 - [tf-task-example](https://github.com/ssbuild/tf-task-example)
-- [chatmoss_finetuning](https://github.com/ssbuild/chatmoss_finetuning)
+- [moss_finetuning](https://github.com/ssbuild/moss_finetuning)
 - [chatglm_finetuning](https://github.com/ssbuild/chatglm_finetuning)
 - [chatglm2_finetuning](https://github.com/ssbuild/chatglm2_finetuning)
 - [chatglm3_finetuning](https://github.com/ssbuild/chatglm3_finetuning)

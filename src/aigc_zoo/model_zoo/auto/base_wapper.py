@@ -2,8 +2,7 @@
 # @Author  : ssbuild
 # @Time    : 2023/9/20 10:15
 import re
-from deep_training.nlp.models.petl import PetlModel
-from deep_training.nlp.models.petl.prompt import get_prompt_model, PromptModel
+from deep_training.nlp.models.petl import PetlModel,get_prompt_model, PromptModel
 from torch import nn
 from transformers import PreTrainedModel
 
@@ -16,12 +15,11 @@ class BaseModelWrapper:
         lora_args,prompt_args = self.lora_args,self.prompt_args
         num_layers_freeze = getattr(self,"num_layers_freeze",-1)
         pre_seq_len = getattr(self.config,"pre_seq_len",None)
-        if lora_args is not None and lora_args.with_lora:
+        if lora_args is not None and lora_args.enable:
             # self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,
                                          auto_prepare_kbit_training=getattr(self,"auto_prepare_kbit_training",True), 
-                                         use_gradient_checkpointing=getattr(self,"gradient_checkpointing",False),
-                                         use_input_require_grads=getattr(self,"use_input_require_grads", True))
+                                         use_gradient_checkpointing=getattr(self,"gradient_checkpointing",False))
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
             self.set_model(model, copy_attr=False)
@@ -35,7 +33,7 @@ class BaseModelWrapper:
             #             if module.weight.dtype == torch.float32:
             #                 module = module.to(torch.bfloat16)
 
-        elif prompt_args is not None and prompt_args.with_prompt:
+        elif prompt_args is not None and prompt_args.enable:
             self.backbone.enable_input_require_grads()
             model: PromptModel = get_prompt_model(self.backbone, prompt_args)
             print('==' * 30, 'prompt info')
@@ -59,8 +57,8 @@ class BaseModelWrapper:
             embedding_size = model.get_input_embeddings().weight.shape[0]
             if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
-                if (self.lora_args is not None and self.lora_args.with_lora) or (
-                        self.prompt_args is not None and self.prompt_args.with_prompt):
+                if (self.lora_args is not None and self.lora_args.enable) or (
+                        self.prompt_args is not None and self.prompt_args.enable):
                     config = model.config
                     if config.task_specific_params is None:
                         config.task_specific_params = {}
@@ -77,17 +75,17 @@ class BaseModelWrapper:
         # for n, p in self.named_parameters():
         #     print(n, p.requires_grad)
         lr = lr if lr is not None else self.config.task_specific_params['learning_rate']
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return [(self.backbone, lr)]
-        elif self.prompt_args and self.prompt_args.with_prompt:
+        elif self.prompt_args and self.prompt_args.enable:
             return [(self.backbone, lr)]
         return super().get_model_lr(model, lr)
 
 
     def get_llm_model(self) -> PreTrainedModel:
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return self.backbone.model.model
-        elif self.prompt_args is not None and self.prompt_args.with_prompt:
+        elif self.prompt_args is not None and self.prompt_args.enable:
             #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model

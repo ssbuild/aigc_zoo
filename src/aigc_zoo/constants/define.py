@@ -52,6 +52,8 @@ TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
     "skywork": ["q_proj", "v_proj"],
     "BlueLM": ["q_proj", "v_proj"],
     "Yi": ["q_proj", "v_proj"],
+    "mistral": ["q_proj", "v_proj"],
+    "stablelm": ["q_proj", "v_proj"],
 }
 
 TRANSFORMERS_MODELS_TO_ADALORA_TARGET_MODULES_MAPPING = {
