@@ -155,12 +155,11 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
         if (self.config.pre_seq_len or 0) > 0:
             self.backbone.enable_input_require_grads()
 
-        if lora_args is not None and lora_args.with_lora:
+        if lora_args is not None and lora_args.enable:
             self.backbone.enable_input_require_grads()
             model: PetlModel  = PetlModel(self.backbone, lora_args,
                               auto_prepare_kbit_training=getattr(self,"auto_prepare_kbit_training",True), 
-                              use_gradient_checkpointing=getattr(self,"use_gradient_checkpointing", False),
-                                         use_input_require_grads=getattr(self,"use_input_require_grads", True)
+                              use_gradient_checkpointing=getattr(self,"use_gradient_checkpointing", False)
                               )
             print('==' * 30,'lora info')
             model.print_trainable_parameters()
@@ -193,8 +192,8 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
             embedding_size = model.get_input_embeddings().weight.shape[0]
             if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
-                if (self.lora_args is not None and self.lora_args.with_lora) or (
-                        self.prompt_args is not None and self.prompt_args.with_prompt):
+                if (self.lora_args is not None and self.lora_args.enable) or (
+                        self.prompt_args is not None and self.prompt_args.enable):
                     config = model.config
                     if config.task_specific_params is None:
                         config.task_specific_params = {}
@@ -209,11 +208,11 @@ class MyTransformer(MyTransformerChatGlmLMHeadModel,ModelWeightMixin, with_pl=Tr
         # for n, p in self.named_parameters():
         #     print(n, p.requires_grad)
         lr = lr if lr is not None else self.config.task_specific_params['learning_rate']
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return [(self.backbone, lr)]
         return super(MyTransformer, self).get_model_lr(model, lr)
 
     def get_llm_model(self) -> MyChatGLMForConditionalGeneration:
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return self.backbone.model.model
         return self.backbone.model

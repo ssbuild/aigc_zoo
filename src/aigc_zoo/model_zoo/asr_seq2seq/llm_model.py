@@ -61,17 +61,17 @@ class MyTransformer(TransformerForSpeechSeq2SeqLM, ModelWeightMixin,BaseModelWra
         # for n, p in self.named_parameters():
         #     print(n, p.requires_grad)
         lr = lr if lr is not None else self.config.task_specific_params['learning_rate']
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return [(self.backbone, lr)]
-        elif self.prompt_args and self.prompt_args.with_prompt:
+        elif self.prompt_args and self.prompt_args.enable:
             return [(self.backbone, lr)]
         return super(MyTransformer, self).get_model_lr(model, lr)
 
 
     def get_llm_model(self) -> PreTrainedModel:
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return self.backbone.model.model
-        elif self.prompt_args is not None and self.prompt_args.with_prompt:
+        elif self.prompt_args is not None and self.prompt_args.enable:
             #PromptModel 方法覆盖原来方法
             return self.backbone
         return self.backbone.model

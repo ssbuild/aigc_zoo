@@ -87,12 +87,11 @@ class MyRRHFTransformer(RRHFModelForCausalLM,ModelWeightMixin,with_pl=True):
 
     def inject_model(self):
         lora_args = self.lora_args
-        if lora_args is not None and lora_args.with_lora:
+        if lora_args is not None and lora_args.enable:
             self.backbone.enable_input_require_grads()
             model: PetlModel = PetlModel(self.backbone, lora_args,
                                          auto_prepare_kbit_training=getattr(self,"auto_prepare_kbit_training",True), 
-                                         use_gradient_checkpointing=getattr(self,"use_gradient_checkpointing", False),
-                                         use_input_require_grads=getattr(self,"use_input_require_grads", True)
+                                         use_gradient_checkpointing=getattr(self,"use_gradient_checkpointing", False)
                                          )
             print('==' * 30, 'lora info')
             model.print_trainable_parameters()
@@ -114,8 +113,8 @@ class MyRRHFTransformer(RRHFModelForCausalLM,ModelWeightMixin,with_pl=True):
             embedding_size = model.get_input_embeddings().weight.shape[0]
             if new_num_tokens > embedding_size:
                 # lora ptv2 二次加载权重需备份原此词表
-                if (self.lora_args is not None and self.lora_args.with_lora) or (
-                        self.prompt_args is not None and self.prompt_args.with_prompt):
+                if (self.lora_args is not None and self.lora_args.enable) or (
+                        self.prompt_args is not None and self.prompt_args.enable):
                     config = model.config
                     if config.task_specific_params is None:
                         config.task_specific_params = {}
@@ -131,16 +130,16 @@ class MyRRHFTransformer(RRHFModelForCausalLM,ModelWeightMixin,with_pl=True):
         # for n, p in self.named_parameters():
         #     print(n, p.requires_grad)
         lr = lr if lr is not None else self.config.task_specific_params['learning_rate']
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return [(self.backbone, lr)]
-        elif self.prompt_args and self.prompt_args.with_prompt:
+        elif self.prompt_args and self.prompt_args.enable:
             return [(self.backbone, lr)]
         return super(MyRRHFTransformer, self).get_model_lr(model, lr)
 
     def get_llm_model(self) -> PreTrainedModel:
-        if self.lora_args is not None and self.lora_args.with_lora:
+        if self.lora_args is not None and self.lora_args.enable:
             return self.backbone.model.model
-        elif self.prompt_args is not None and self.prompt_args.with_prompt:
+        elif self.prompt_args is not None and self.prompt_args.enable:
             # PromptModel 方法覆盖原来方法
             return self.backbone.model
         return self.backbone.model
