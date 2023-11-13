@@ -2,6 +2,7 @@
    - [deep_training](https://github.com/ssbuild/deep_training)
 
 ```text
+    11-13 0.2.9
     11-01 0.2.7 
           0.2.7.post1 support skywork,bluelm
           0.2.7.post2 support yi
