@@ -8,13 +8,13 @@ from setuptools import setup, find_packages
 install_requires = [
     # 'deep_training>=0.1.13,<=0.1.15',
     # 'deep_training ~= 0.2.6.rc0',
-    'deep_training ~= 0.2.9',
+    'deep_training ~= 0.2.10',
 ]
 
 if __name__ == '__main__':
     setup(
         name='aigc_zoo',
-        version='0.2.9',
+        version='0.2.10',
         description='aigc zoo',
         long_description='torch_training: https://github.com/ssbuild/aigc_zoo.git',
         license='Apache License 2.0',
