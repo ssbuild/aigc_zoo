@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional, Callable, Generator, Any, Union
 import torch
 from deep_training.nlp.layers.rope_scale.patch import *
 from deep_training.nlp.models.qwen.modeling_qwen import QWenConfig, QWenLMHeadModel, setup_model_profile, \
-    _ERROR_BAD_CHAT_FORMAT
+    _ERROR_BAD_CHAT_FORMAT, _SENTINEL, _ERROR_STREAM_IN_CHAT
 from deep_training.nlp.models.transformer import TransformerBase
 from torch import nn
 from transformers import LogitsProcessorList, LogitsProcessor, GenerationConfig, StoppingCriteriaList, \
@@ -38,23 +38,27 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             query: str,
             history: Optional[HistoryType],
             system: str = "You are a helpful assistant.",
-            append_history: bool = True,
+            stream: Optional[bool] = _SENTINEL,
             stop_words_ids: Optional[List[List[int]]] = None,
             generation_config: Optional[GenerationConfig] = None,
-            **kwargs
+            **kwargs,
     ) -> Tuple[str, HistoryType]:
         generation_config = generation_config if generation_config is not None else self.generation_config
-        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
 
+        assert stream is _SENTINEL, _ERROR_STREAM_IN_CHAT
+        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
         if history is None:
             history = []
+        else:
+            # make a copy of the user's input such that is is left untouched
+            history = copy.deepcopy(history)
 
         if stop_words_ids is None:
             stop_words_ids = []
 
-        max_window_size = kwargs.pop('max_window_size', None)
+        max_window_size = kwargs.get('max_window_size', None)
         if max_window_size is None:
-            max_window_size = getattr(generation_config,"max_window_size",6144)
+            max_window_size = getattr(generation_config,"max_window_size",24000)
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
@@ -68,11 +72,11 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             generation_config.chat_format, tokenizer
         ))
         input_ids = torch.tensor([context_tokens]).to(self.device)
-
         outputs = self.generate(
             input_ids,
             stop_words_ids=stop_words_ids,
             return_dict_in_generate=False,
+            generation_config=generation_config,
             **kwargs,
         )
 
@@ -83,11 +87,14 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             context_length=len(context_tokens),
             chat_format=generation_config.chat_format,
             verbose=False,
-            errors='replace',
+            errors='replace'
         )
 
-        if append_history:
-            history.append((query, response))
+        # as history is a copy of the user inputs,
+        # we can always return the new turn to the user.
+        # separating input history and output history also enables the user
+        # to implement more complex history management
+        history.append((query, response))
 
         return response, history
 
@@ -98,9 +105,10 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             query: str,
             history: Optional[HistoryType],
             system: str = "You are a helpful assistant.",
+            stop_words_ids: Optional[List[List[int]]] = None,
+            logits_processor: Optional[LogitsProcessorList] = None,
             generation_config: Optional[GenerationConfig] = None,
-            stop_words_ids=None,
-            **kwargs
+            **kwargs,
     ) -> Generator[str, Any, None]:
         generation_config = generation_config if generation_config is not None else self.generation_config
         assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
@@ -108,11 +116,10 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             history = []
         if stop_words_ids is None:
             stop_words_ids = []
+
         max_window_size = kwargs.get('max_window_size', None)
         if max_window_size is None:
-            max_window_size = getattr(generation_config,"max_window_size",6144)
-        logits_processor = kwargs.pop('logits_processor', None)
-
+            max_window_size = getattr(generation_config,"max_window_size",24000)
         raw_text, context_tokens = make_context(
             tokenizer,
             query,
@@ -148,6 +155,7 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
                     return_dict_in_generate=False,
                     generation_config=stream_config,
                     logits_processor=logits_processor,
+                    seed=-1,
                     **kwargs):
                 outputs.append(token.item())
                 yield tokenizer.decode(outputs, skip_special_tokens=True, errors='ignore')
@@ -163,17 +171,18 @@ class MyQWenLMHeadModel(QWenLMHeadModel):
             **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
         generation_config = generation_config if generation_config is not None else self.generation_config
+
         # Process stop_words_ids.
         stop_words_ids = kwargs.pop("stop_words_ids", None)
         if stop_words_ids is None and generation_config is not None:
             stop_words_ids = getattr(generation_config, "stop_words_ids", None)
         if stop_words_ids is None:
-            stop_words_ids = getattr(self.generation_config, "stop_words_ids", None)
+            stop_words_ids = getattr(generation_config, "stop_words_ids", None)
 
         if stop_words_ids is not None:
             stop_words_logits_processor = StopWordsLogitsProcessor(
                 stop_words_ids=stop_words_ids,
-                eos_token_id=self.generation_config.eos_token_id,
+                eos_token_id=generation_config.eos_token_id,
             )
             if logits_processor is None:
                 logits_processor = LogitsProcessorList([stop_words_logits_processor])
