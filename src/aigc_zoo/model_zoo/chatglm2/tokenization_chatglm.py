@@ -66,7 +66,6 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
     model_input_names = ["input_ids", "attention_mask", "position_ids"]
 
     def __init__(self, vocab_file, padding_side="left", **kwargs):
-        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=False, **kwargs)
         self.name = "GLMTokenizer"
 
         self.vocab_file = vocab_file
@@ -76,6 +75,9 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             "<eos>": self.tokenizer.eos_id,
             "<pad>": self.tokenizer.pad_id
         }
+
+        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=False, **kwargs)
+
 
     def get_command(self, token):
         if token in self.special_tokens:

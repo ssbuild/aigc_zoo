@@ -7,7 +7,7 @@ from typing import List, Tuple
 import torch
 from torch import nn
 from deep_training.nlp.models.moss import MossForCausalLM,MossConfig # noqa
-from deep_training.nlp.models.moss.tokenization_moss import MossTokenizer # noqa
+from .tokenization_moss import MossTokenizer # noqa
 from deep_training.nlp.models.transformer import TransformerBase
 
 from ..auto.base_wapper import BaseModelWrapper
